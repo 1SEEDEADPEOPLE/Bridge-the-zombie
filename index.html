@@ -1,0 +1,2125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>LAST BRIDGE — Multiplier Runner</title>
+<meta name="description" content="A comic-style zombie horde lane shooter. Drag to steer your squad, break weapon gates, survive the nonstop horde, and beat the Butcher.">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0a0f1a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Last Bridge">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon-180x180.png">
+<link rel="apple-touch-icon" sizes="167x167" href="icons/apple-touch-icon-167x167.png">
+<link rel="apple-touch-icon" sizes="152x152" href="icons/apple-touch-icon-152x152.png">
+<link rel="apple-touch-icon" sizes="120x120" href="icons/apple-touch-icon-120x120.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Permanent+Marker&family=Bangers&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ice:#7fd4ff; --ice-deep:#2b8fd6; --bad:#ff4d57; --good:#46e08a;
+    --gold:#ffd24d; --ink:#0a0f1a; --road:#3a4252;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;background:#05070d;overflow:hidden;
+    font-family:"Bangers","Arial Black",system-ui,sans-serif;-webkit-user-select:none;user-select:none;
+    -webkit-tap-highlight-color:transparent;}
+  #wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;}
+  #stage{position:relative;height:100%;aspect-ratio:9/16;max-width:100%;
+    box-shadow:0 0 60px rgba(0,0,0,.8), inset 0 0 0 5px #0a0f1a, inset 0 0 0 8px rgba(255,255,255,.08);
+    background:#05070d;}
+  canvas{display:block;width:100%;height:100%;touch-action:none;}
+  /* Overlays */
+  .screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;text-align:center;color:#fff;gap:18px;padding:24px;
+    background:radial-gradient(120% 80% at 50% 20%,rgba(20,40,70,.85),rgba(3,5,10,.96));
+    z-index:10;}
+  .screen.hidden{display:none}
+  .screen h1{font-family:"Bangers","Arial Black",sans-serif;font-size:clamp(38px,10vw,72px);
+    letter-spacing:2px;line-height:.95;transform:rotate(-1.5deg);
+    -webkit-text-stroke:3px #0a0f1a; paint-order:stroke fill;
+    text-shadow:6px 6px 0 rgba(0,0,0,.5);}
+  .tag{font-family:"Permanent Marker",Arial,sans-serif;font-weight:400;font-size:clamp(13px,3.4vw,17px);
+    color:#9fb4d4;max-width:30ch;line-height:1.5;}
+  .win h1{color:var(--good);text-shadow:0 0 24px rgba(70,224,138,.6),6px 6px 0 rgba(0,0,0,.5)}
+  .lose h1{color:var(--bad);text-shadow:0 0 24px rgba(255,77,87,.55),6px 6px 0 rgba(0,0,0,.5)}
+  .stat{font-family:"Permanent Marker",Arial,sans-serif;color:#cfe1ff;font-size:15px}
+  button{font-family:"Bangers","Arial Black",sans-serif;font-size:clamp(19px,5vw,24px);
+    color:var(--ink);background:linear-gradient(180deg,#9fe7ff,#39b4ee);
+    border:4px solid #0a0f1a;border-radius:14px 20px 16px 22px;padding:16px 40px;cursor:pointer;
+    letter-spacing:1px;transform:rotate(-0.6deg);
+    box-shadow:0 6px 0 #0a0f1a,0 10px 22px rgba(0,0,0,.45);transition:transform .06s,box-shadow .06s;}
+  button:active{transform:translateY(4px) rotate(-0.6deg);box-shadow:0 2px 0 #0a0f1a,0 4px 10px rgba(0,0,0,.4)}
+  button:focus-visible{outline:3px solid #fff;outline-offset:3px}
+  .hint{font-family:"Permanent Marker",Arial,sans-serif;font-size:13px;color:#7e93b5;}
+  .badge{font-family:"Permanent Marker",Arial,sans-serif;font-weight:400;font-size:13px;letter-spacing:1.5px;
+    color:#0a0f1a;background:#7fd4ff;border:2.5px solid #0a0f1a;padding:5px 14px;border-radius:18px 24px 20px 26px;
+    transform:rotate(1deg);}
+  #muteBtn,#pauseBtn{position:absolute;top:calc(env(safe-area-inset-top,0px) + 12px);z-index:20;width:40px;height:40px;border-radius:50%;
+    background:#0a0f1a;border:2.5px solid #fff;display:flex;align-items:center;
+    justify-content:center;cursor:pointer;padding:0;box-shadow:0 3px 0 rgba(0,0,0,.5);}
+  #muteBtn{right:calc(env(safe-area-inset-right,0px) + 12px);}
+  #pauseBtn{left:calc(env(safe-area-inset-left,0px) + 12px);}
+  #muteBtn:active,#pauseBtn:active{transform:translateY(2px)}
+  #muteBtn svg,#pauseBtn svg{width:20px;height:20px;display:block}
+  button{display:inline-flex;align-items:center;gap:10px;}
+  button svg{width:22px;height:22px;flex-shrink:0;}
+  #upgradeCards{display:flex;flex-direction:column;gap:12px;width:100%;max-width:320px;}
+  .upgradeCard{display:flex;align-items:center;gap:14px;width:100%;text-align:left;
+    font-family:"Bangers","Arial Black",sans-serif;color:var(--ink);
+    background:linear-gradient(180deg,#fff7d8,#ffd24d);
+    border:4px solid #0a0f1a;border-radius:14px 18px 16px 20px;padding:10px 14px;cursor:pointer;
+    box-shadow:0 5px 0 #0a0f1a,0 8px 18px rgba(0,0,0,.4);transform:rotate(0deg);}
+  .upgradeCard:active{transform:translateY(4px);box-shadow:0 1px 0 #0a0f1a,0 3px 8px rgba(0,0,0,.35)}
+  .upgradeIcon{width:34px;height:34px;flex-shrink:0;}
+  .upgradeIcon svg{width:100%;height:100%;display:block}
+  .upgradeName{font-size:15px;letter-spacing:.5px;line-height:1.1;}
+  .upgradeDesc{font-family:"Permanent Marker",Arial,sans-serif;font-size:11px;color:#3a2a08;
+    line-height:1.2;margin-top:2px;}
+  .upgradeText{display:flex;flex-direction:column;}
+  .secondaryBtn{background:linear-gradient(180deg,#2a3344,#161c28)!important;
+    color:#fff!important;padding:11px 28px!important;font-size:clamp(14px,3.6vw,17px)!important;
+    box-shadow:0 4px 0 #0a0f1a,0 7px 14px rgba(0,0,0,.4)!important;}
+  .secondaryBtn:active{transform:translateY(3px) rotate(-0.6deg)!important;
+    box-shadow:0 1px 0 #0a0f1a,0 2px 6px rgba(0,0,0,.35)!important;}
+  #perksScreen{overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:max(24px,env(safe-area-inset-bottom));}
+  #perksList{display:flex;flex-direction:column;gap:10px;width:100%;max-width:360px;margin:6px 0;}
+  .perkWeapon{background:rgba(255,255,255,.04);border:3px solid #0a0f1a;border-radius:14px 18px 16px 20px;
+    padding:10px 12px;text-align:left;}
+  .perkWeaponHead{display:flex;align-items:center;gap:10px;margin-bottom:6px;}
+  .perkWeaponHead .icon{width:26px;height:26px;flex-shrink:0;}
+  .perkWeaponHead .icon svg{width:100%;height:100%;display:block}
+  .perkWeaponName{font-family:"Bangers","Arial Black",sans-serif;font-size:16px;letter-spacing:.5px;color:#fff;}
+  .perkRow{display:flex;gap:10px;align-items:flex-start;padding:5px 0 5px 4px;
+    border-top:1.5px dashed rgba(255,255,255,.15);}
+  .perkRow:first-of-type{border-top:none;}
+  .perkLevel{font-family:"Bangers","Arial Black",sans-serif;font-size:13px;color:#ffd24d;
+    flex-shrink:0;width:38px;}
+  .perkInfo{display:flex;flex-direction:column;}
+  .perkName{font-family:"Bangers","Arial Black",sans-serif;font-size:13px;color:#7fd4ff;letter-spacing:.3px;}
+  .perkDesc{font-family:"Permanent Marker",Arial,sans-serif;font-size:11px;color:#b9c4d6;line-height:1.25;}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="stage">
+    <canvas id="game"></canvas>
+    <button id="pauseBtn" aria-label="Pause">
+      <svg viewBox="0 0 100 100" stroke="#0a0f1a" stroke-width="7" stroke-linejoin="round" stroke-linecap="round" fill="#fff2c4">
+        <rect x="28" y="20" width="16" height="60" rx="4"/>
+        <rect x="56" y="20" width="16" height="60" rx="4"/>
+      </svg>
+    </button>
+    <button id="muteBtn" aria-label="Mute sound">
+      <svg id="muteIcon" viewBox="0 0 100 100" stroke="#0a0f1a" stroke-width="7" stroke-linejoin="round" stroke-linecap="round" fill="#fff2c4">
+        <path d="M18,37 L38,38 L59,19 L57,81 L37,63 L17,62 Z"/>
+        <path d="M18,37 L38,38 L59,19 L57,81 L37,63 L17,62 Z" transform="translate(1.5,1.5)" opacity="0.4"/>
+        <g id="muteWaves" fill="none">
+          <path d="M70,33 Q83,50 70,67"/>
+          <path d="M79,22 Q99,50 79,78"/>
+        </g>
+      </svg>
+    </button>
+
+    <div id="start" class="screen">
+      <div class="badge">SQUAD SURVIVAL</div>
+      <h1>LAST<br>BRIDGE</h1>
+      <p class="tag">Drag to steer your squad. Shoot the ice gates to multiply your numbers, mow down the horde, and break the Butcher at the end of the bridge.</p>
+      <button id="startBtn">
+        <svg viewBox="0 0 100 100" stroke="#0a0f1a" stroke-width="7" stroke-linejoin="round" stroke-linecap="round" fill="#ffd24d">
+          <path d="M28,20 L80,49 L29,81 Z"/>
+          <path d="M28,20 L80,49 L29,81 Z" transform="translate(1.5,1.5)" opacity="0.35"/>
+        </svg>
+        TAP TO PLAY
+      </button>
+      <button id="perksBtn" class="secondaryBtn">
+        <svg viewBox="0 0 100 100" stroke="#0a0f1a" stroke-width="7" stroke-linejoin="round" stroke-linecap="round" fill="#7fd4ff">
+          <path d="M50,12 L62,40 L88,40 L66,58 L75,86 L50,68 L25,86 L34,58 L12,40 L38,40 Z"/>
+        </svg>
+        WEAPON PERKS
+      </button>
+      <p class="hint">Hold &amp; drag anywhere · left / right</p>
+    </div>
+
+    <div id="end" class="screen hidden">
+      <h1 id="endTitle">VICTORY</h1>
+      <p class="tag" id="endMsg"></p>
+      <p class="stat" id="endStat"></p>
+      <button id="retryBtn">
+        <svg viewBox="0 0 100 100" stroke="#0a0f1a" stroke-width="7" stroke-linejoin="round" stroke-linecap="round" fill="none">
+          <path d="M78,32 A34,34 0 1 0 80,66"/>
+          <path d="M78,32 A34,34 0 1 0 80,66" transform="translate(1.5,1.5)" opacity="0.35"/>
+          <path d="M62,16 L82,29 L60,40 Z" fill="#ffd24d"/>
+        </svg>
+        RETRY
+      </button>
+    </div>
+
+    <div id="pauseScreen" class="screen hidden">
+      <h1>PAUSED</h1>
+      <button id="resumeBtn">
+        <svg viewBox="0 0 100 100" stroke="#0a0f1a" stroke-width="7" stroke-linejoin="round" stroke-linecap="round" fill="#ffd24d">
+          <path d="M28,20 L80,49 L29,81 Z"/>
+        </svg>
+        RESUME
+      </button>
+      <button id="restartBtn">
+        <svg viewBox="0 0 100 100" stroke="#0a0f1a" stroke-width="7" stroke-linejoin="round" stroke-linecap="round" fill="none">
+          <path d="M78,32 A34,34 0 1 0 80,66"/>
+          <path d="M62,16 L82,29 L60,40 Z" fill="#ffd24d"/>
+        </svg>
+        RESTART
+      </button>
+    </div>
+
+    <div id="upgradeScreen" class="screen hidden">
+      <div class="badge" id="upgradeLevelTitle">LEVEL 1 CLEARED</div>
+      <h1 style="font-size:clamp(26px,7vw,40px)">CHOOSE AN UPGRADE</h1>
+      <div id="upgradeCards"></div>
+    </div>
+
+    <div id="perksScreen" class="screen hidden" style="justify-content:flex-start;padding-top:max(24px,env(safe-area-inset-top));">
+      <h1 style="font-size:clamp(26px,7vw,38px);margin-top:6px;">WEAPON PERKS</h1>
+      <p class="tag" style="margin-bottom:6px;">Re-picking a weapon you already own levels it up. Every weapon unlocks a brand-new effect at level 10, 20, and 30.</p>
+      <div id="perksList"></div>
+      <button id="perksBackBtn">
+        <svg viewBox="0 0 100 100" stroke="#0a0f1a" stroke-width="7" stroke-linejoin="round" stroke-linecap="round" fill="none">
+          <path d="M70,20 L30,50 L70,80"/>
+        </svg>
+        BACK
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================================
+   LAST BRIDGE — single-file multiplier runner zombie shooter
+   All tunables live in CONFIG so balancing is one place to edit.
+   ============================================================================ */
+const CONFIG = {
+  // Logical design resolution (canvas is scaled to fit the screen)
+  W: 450, H: 800,
+
+  // Perspective: the bridge converges from a wide near edge to a far horizon
+  horizonY: 96,        // screen-y of the vanishing line (far)
+  squadY: 600,         // screen-y where the squad sits (near)
+  roadHalfNear: 188,   // half road width at the squad line (scale = 1)
+  farScale: 0.20,      // size multiplier at the horizon
+
+  // World scroll (depth units per second; z runs 0=near .. 1=horizon)
+  scrollSpeed: 0.185,
+
+  // Squad — power mostly comes from weapon tiers, but there's no artificial
+  // ceiling on headcount anymore: growth is purely additive (small +N gates,
+  // no multipliers), so there's nothing left that can runaway/explode.
+  startSoldiers: 5,
+  maxSquad: Infinity,
+  laneFollow: 14,      // how snappily the squad eases toward the drag target
+  laneLimit: 0.84,     // how far left/right the squad may go (-1..1)
+  dragSensitivity: 2.4, // dragging this fraction of the screen width = full lane range
+  maxRenderSoldiers: 150,
+  soldierSpacing: 0.052,
+  formationHalfWidth: 0.115, // hard cap on lateral spread — squad always fits in one lane, never spills into the gate lane regardless of size
+  maxShooters: 28,      // cap on simultaneous firing lanes per volley (perf); overflow becomes bonus damage
+  gateLaneEdge: -0.06,  // bullets/squad must cross this far past the median to actually touch the gate (matches its drawn position — previously this was too generous and caught stray wide-spread shots)
+
+  // Picking up a weapon you already have "levels it up" instead of doing
+  // nothing — each repeat grants a damage bonus (applied to its base dmg,
+  // splash, and burn) AND, every milestone level, unlocks a brand-new
+  // effect for that specific weapon (see CONFIG.weapons[i].perks). Leveling
+  // is uncapped — it always keeps mattering — but the damage curve softens
+  // past level 5 (see weaponLevelMultiplier) so numbers stay sane deep into
+  // a long run instead of compounding linearly forever.
+  weaponLevelDamageBonus: 0.25, // +25% damage per level, for the first 5 levels
+  weaponPerkLevels: [10, 20, 30], // milestones — every weapon gets a new perk at each
+
+  // Weapon gates keep appearing even during the boss fight (not just before
+  // it) so you can still power up mid-fight — to balance that out, zombie
+  // density is higher and squad-add amounts are lower than they'd otherwise
+  // need to be.
+  bossGateIntervalMin: 5.5,
+  bossGateIntervalMax: 8,
+
+  // Weapons by tier: spread is the firing cone half-width — independent of
+  // squad size, so a bigger squad doesn't automatically blanket the whole
+  // road; only better weapons (earned at gates) widen your effective reach.
+  // Every spread is >= formationHalfWidth so bullets always visually cover
+  // the full formation width (a weapon narrower than the squad looked wrong).
+  // Fire rate is mostly tied to damage (heavy hitters are slow, light
+  // weapons are fast), with one deliberate exception: the machine gun is
+  // tuned to feel like a laser — fast AND hard-hitting — as its whole
+  // identity, made up for by a narrower per-shot footprint than the others.
+  // (Flamethrower's instant dmg looks modest here because most of its
+  // damage comes from the burn DOT below — its *total* output is high.)
+  //   dmg:  6    < 7    < 9*   < 15   < 75       (machine gun is the outlier at .045 interval / 6 dmg)
+  //   int: .045  < .16  < .30  < .42  < .80                              (*+burn DOT)
+  // projectile controls the visual shape drawn for that weapon's shots.
+  weapons: [
+    { interval: 0.16,  dmg: 7,  speed: 1.8, streams: 1, spread: 0.13, color: '#fff2c4', name: 'PISTOL',
+      projectile:'bullet',
+      perks: [
+        { level:10, name:'PIERCING ROUNDS', desc:'Bullets punch through to a 2nd target' },
+        { level:20, name:'CRITICAL HITS', desc:'20% chance to deal double damage' },
+        { level:30, name:'DEEP PIERCE', desc:'Bullets now punch through 3 targets total' },
+      ] },
+    { interval: 0.045, dmg: 6,  speed: 2.4, streams: 1, spread: 0.14, color: '#d6ffe8', name: 'MACHINE GUN',
+      projectile:'tracer', psize:1.3, laser:true,
+      perks: [
+        { level:10, name:'ARMOR SHRED', desc:'Hits stack a debuff: +4% damage taken, up to 5 stacks' },
+        { level:20, name:'PIERCING ROUNDS', desc:'Bullets punch through to a 2nd target' },
+        { level:30, name:'DEEP PIERCE', desc:'Bullets now punch through 3 targets total' },
+      ] },
+    { interval: 0.42,  dmg: 15, speed: 1.6, streams: 5, spread: 0.28, color: '#ffb86b', name: 'SHOTGUN',
+      projectile:'pellet', knockback:true, knockDist:0.12, stun:true, stunDuration:1.0,
+      staggerRadiusLane:0.16, staggerRadiusZ:0.10,
+      perks: [
+        { level:10, name:'EXPLOSIVE SHELLS', desc:'Pellets detonate a small blast on impact' },
+        { level:20, name:'BIGGER SHELLS', desc:'Explosive blast radius and damage increased' },
+        { level:30, name:'INCENDIARY SHELLS', desc:'Explosive blast also ignites nearby zombies' },
+      ] },
+    { interval: 0.045, dmg: 4,  speed: 2.3, streams: 2, spread: 0.17, color: '#caffe0', name: 'DUAL SMG',
+      projectile:'tracer', psize:0.7,
+      perks: [
+        { level:10, name:'RICOCHET', desc:'Hits bounce to the nearest zombie for 60% damage' },
+        { level:20, name:'DOUBLE RICOCHET', desc:'Ricochet now bounces to 2 nearby zombies' },
+        { level:30, name:'FROSTED ROUNDS', desc:'Ricochet hits also briefly slow their target' },
+      ] },
+    { interval: 0.80,  dmg: 75, speed: 1.3, streams: 1, spread: 0.20, color: '#ff5a3d', name: 'BAZOOKA',
+      projectile:'rocket', explosive:true, splashRadiusLane:0.20, splashRadiusZ:0.10, splashDmg:35,
+      throw:true, throwDuration:0.9, slowDuration:1.6, slowFactor:0.35,
+      perks: [
+        { level:10, name:'BUNKER BUSTER', desc:'+40% splash radius and splash damage' },
+        { level:20, name:'DOUBLE DETONATION', desc:'A 2nd smaller blast follows half a second later' },
+        { level:30, name:'CONCUSSIVE BLAST', desc:'Splash damage also briefly stuns survivors' },
+      ] },
+    { interval: 0.30,  dmg: 12, speed: 1.9, streams: 7, spread: 0.34, color: '#ff8a3d', name: 'FLAMETHROWER',
+      projectile:'flame', burn:true, burnDmgPerSec:34, burnDuration:3.2, igniteRadiusLane:0.24, igniteRadiusZ:0.13,
+      perks: [
+        { level:10, name:'CRYO-FUEL', desc:'Burning zombies are also slowed' },
+        { level:20, name:'WILDFIRE', desc:'+50% burn duration and damage, wider ignite spread' },
+        { level:30, name:'COMBUSTION', desc:'Zombies killed by fire burst, damaging nearby enemies' },
+      ] },
+  ],
+
+  // Zombies — base stats; the continuous spawner (see zombieSpawn* below)
+  // ramps HP/speed/count up gradually with distance traveled.
+  zombieHP: 16,
+  zombieSpeed: 0.11,    // depth units/sec toward the squad
+  zombieDamage: 1,      // soldiers removed when one reaches the line
+
+  // Nonstop horde: the right lane continuously spawns rows of zombies —
+  // there are no gaps between waves, and it never stops until the boss is
+  // beaten (or you lose). Spawn rate, row size, HP and speed all ramp up
+  // gradually with distance traveled, not with squad size. Bumped up a
+  // notch from before to offset weapon gates now spawning through the boss
+  // fight too.
+  zombieSpawnIntervalStart: 0.7,    // seconds between rows at the very start
+  zombieSpawnIntervalMin: 0.27,     // fastest the spawn rate can ramp to
+  zombieSpawnIntervalDecay: 0.045,  // interval shrinks by this much per unit traveled
+  zombieRowCountStart: 10,
+  zombieRowCountGrowth: 0.5,        // extra zombies per row, per unit traveled
+  zombieRowCountMax: 16,
+  zombieHpPerDistance: 0.35,       // HP grows by this fraction per unit traveled
+  zombieSpeedPerDistance: 0.055,   // speed grows by this fraction per unit traveled
+  maxAliveZombies: 190,            // safety cap so a neglected horde can't tank perf
+
+  // Squad firepower has diminishing returns past this many soldiers. With a
+  // 12-soldier hard cap this rarely kicks in, but it's kept as a safety net.
+  squadPowerCap: 28,
+  squadOverflowSoftener: 1.6,
+
+  // Boss "Butcher" — HP is computed live from the squad's actual DPS the
+  // moment it spawns, so the fight always lasts ~bossFightSeconds whether
+  // the squad rushed weapon tiers or stacked raw numbers. Keeps it fair
+  // whether you arrive strong or weak.
+  bossFightSeconds: 16,
+  bossMinHP: 900,
+  bossSpeed: 0.024,    // depth units/sec toward the squad
+  bossStartZ: 0.92,
+  bossReachZ: 0.06,    // if boss gets here, squad is wiped
+  bossHpRampPerExtra: 0.22, // each extra boss in the same level is a bit tankier than the last
+
+  // Levels: the run is now broken into discrete levels. Each one ends in a
+  // boss gauntlet — bosses spawn one after another on a timer (not waiting
+  // for the previous one to die), so a fast player sees them sequentially
+  // while a slow player can end up fighting several at once. Boss count and
+  // overall difficulty both ramp with level number.
+  bossQuotaBase: 1,
+  bossQuotaPerLevels: 2,   // +1 boss quota every N levels
+  bossQuotaMax: 5,
+  bossSpawnIntervalMin: 9,
+  bossSpawnIntervalMax: 14,
+  levelDifficultyPerLevel: 0.16, // extra zombie HP/speed/count fraction per level, on top of the in-level distance ramp
+
+  // Red "penalty" gates are a real debuff now: breaking one costs squad AND
+  // weakens your damage for a few seconds (avoiding it entirely is usually
+  // better than shooting it).
+  penaltyWeakenDuration: 3.5,
+  penaltyWeakenFactor: 0.7, // damage multiplier while weakened
+
+  // Roguelite upgrades: after every level you pick 1 of 3. They stack for
+  // the rest of the run and reset only on defeat.
+  upgradeChoicesPerLevel: 3,
+
+  // HUD is offset down from the very top of the canvas so it clears the iOS
+  // status bar (clock/battery/wifi) which otherwise overlapped it.
+  hudTop: 34,
+
+  // Level pacing
+  eventGap: 1.15,      // depth-distance between scripted events — spaced so a gate fully crosses before the next spawns
+};
+
+// 25 background palettes, cycled one per level so the skyline/sky genuinely
+// changes instead of just re-randomizing the same navy scene. Each level's
+// skyline silhouette is generated ONCE (seeded) and stored, not re-rolled
+// every frame — that's what caused the buildings to visibly jitter/"jump".
+const BACKGROUNDS = [
+  {top:'#0c1a38',bottom:'#1d4a78',building:'#091523',accent:'rgba(150,200,255,.25)'},
+  {top:'#1a0c2e',bottom:'#4a1d70',building:'#170a26',accent:'rgba(220,160,255,.25)'},
+  {top:'#06151c',bottom:'#0c3d44',building:'#04100a',accent:'rgba(120,255,210,.22)'},
+  {top:'#2b0a0a',bottom:'#6b1a1a',building:'#1d0606',accent:'rgba(255,150,120,.22)'},
+  {top:'#0a1430',bottom:'#27306e',building:'#080d20',accent:'rgba(160,180,255,.22)'},
+  {top:'#1c1404',bottom:'#5a4408',building:'#120c02',accent:'rgba(255,220,120,.22)'},
+  {top:'#08111c',bottom:'#163048',building:'#060d16',accent:'rgba(140,210,255,.2)'},
+  {top:'#220a1c',bottom:'#601840',building:'#160712',accent:'rgba(255,140,200,.22)'},
+  {top:'#0a1c16',bottom:'#1f4d36',building:'#071510',accent:'rgba(140,255,180,.2)'},
+  {top:'#241004',bottom:'#7a3208',building:'#180a02',accent:'rgba(255,180,100,.24)'},
+  {top:'#0c0c20',bottom:'#2a2a5e',building:'#08081a',accent:'rgba(180,170,255,.22)'},
+  {top:'#1a0404',bottom:'#4e0c0c',building:'#100303',accent:'rgba(255,100,100,.22)'},
+  {top:'#031c1c',bottom:'#0a4a4a',building:'#021212',accent:'rgba(120,255,240,.2)'},
+  {top:'#140a24',bottom:'#3a1a5e',building:'#0d0618',accent:'rgba(200,150,255,.22)'},
+  {top:'#1c1c04',bottom:'#4a4a0a',building:'#121202',accent:'rgba(230,230,120,.2)'},
+  {top:'#04141c',bottom:'#0c3c54',building:'#020e16',accent:'rgba(120,200,255,.22)'},
+  {top:'#240414',bottom:'#5e0c38',building:'#180310',accent:'rgba(255,120,180,.22)'},
+  {top:'#0a2010',bottom:'#1c5028',building:'#06160a',accent:'rgba(140,255,160,.2)'},
+  {top:'#1c0c04',bottom:'#5a2a0c',building:'#120802',accent:'rgba(255,170,110,.22)'},
+  {top:'#04081c',bottom:'#10204e',building:'#020512',accent:'rgba(130,160,255,.22)'},
+  {top:'#1c0420',bottom:'#4e0c58',building:'#120314',accent:'rgba(230,130,255,.22)'},
+  {top:'#081c14',bottom:'#144a34',building:'#04120c',accent:'rgba(120,240,190,.2)'},
+  {top:'#241804',bottom:'#5e4408',building:'#180f02',accent:'rgba(255,210,110,.22)'},
+  {top:'#06101c',bottom:'#16345e',building:'#040b14',accent:'rgba(150,190,255,.22)'},
+  {top:'#1c0810',bottom:'#4e1830',building:'#120508',accent:'rgba(255,150,170,.22)'},
+];
+
+/* ----------------------------- tiny utilities ---------------------------- */
+/* ------------------------------- sound ------------------------------------ */
+// Fully procedural (oscillators + filtered noise) — no audio files, so the
+// repo stays single-file-friendly. Created/resumed on first tap (browsers
+// require a user gesture before audio can play).
+let audioCtx=null, masterGain=null, muted=false;
+function initAudio(){
+  if(audioCtx) { if(audioCtx.state==='suspended') audioCtx.resume(); return; }
+  try{
+    audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+    masterGain = audioCtx.createGain(); masterGain.gain.value=0.45;
+    masterGain.connect(audioCtx.destination);
+  }catch(e){ audioCtx=null; }
+}
+function toneSfx(freq,duration,type,startGain,freqEnd){
+  if(!audioCtx||muted) return;
+  const t=audioCtx.currentTime;
+  const osc=audioCtx.createOscillator(); osc.type=type||'sine';
+  osc.frequency.setValueAtTime(freq,t);
+  if(freqEnd) osc.frequency.exponentialRampToValueAtTime(Math.max(20,freqEnd), t+duration);
+  const g=audioCtx.createGain(); g.gain.setValueAtTime(startGain||0.25,t);
+  g.gain.exponentialRampToValueAtTime(0.001, t+duration);
+  osc.connect(g); g.connect(masterGain); osc.start(t); osc.stop(t+duration+0.02);
+}
+function noiseSfx(duration,startGain,filterFreq){
+  if(!audioCtx||muted) return;
+  const t=audioCtx.currentTime;
+  const n=Math.max(1,Math.floor(audioCtx.sampleRate*duration));
+  const buf=audioCtx.createBuffer(1,n,audioCtx.sampleRate);
+  const d=buf.getChannelData(0);
+  for(let i=0;i<n;i++) d[i]=Math.random()*2-1;
+  const src=audioCtx.createBufferSource(); src.buffer=buf;
+  const filter=audioCtx.createBiquadFilter(); filter.type='lowpass'; filter.frequency.value=filterFreq||2000;
+  const g=audioCtx.createGain(); g.gain.setValueAtTime(startGain||0.25,t);
+  g.gain.exponentialRampToValueAtTime(0.001, t+duration);
+  src.connect(filter); filter.connect(g); g.connect(masterGain);
+  src.start(t); src.stop(t+duration);
+}
+const SFX = {
+  fire(tier){
+    switch(tier){
+      case 0: toneSfx(540,0.07,'square',0.16); break;
+      case 1: toneSfx(460,0.045,'square',0.11); break;
+      case 2: noiseSfx(0.14,0.28,1100); toneSfx(140,0.1,'sawtooth',0.14,55); break;
+      case 3: toneSfx(680,0.035,'square',0.09); break;
+      case 4: toneSfx(85,0.3,'sawtooth',0.3,40); noiseSfx(0.28,0.22,420); break;
+      case 5: noiseSfx(0.08,0.1,3200); break;
+    }
+  },
+  zombieDeath(){ if(Math.random()<0.35){ noiseSfx(0.1,0.16,600); toneSfx(150,0.13,'sawtooth',0.09,55); } },
+  gateBreak(){ noiseSfx(0.2,0.24,4200); toneSfx(1200,0.16,'sine',0.14,320); },
+  explosion(){ noiseSfx(0.35,0.32,320); toneSfx(60,0.4,'sawtooth',0.28,30); },
+  bossHit(){ if(Math.random()<0.25) toneSfx(200,0.07,'square',0.16,140); },
+  weaponLevel(){ toneSfx(700,0.08,'sine',0.2,900); },
+  win(){ [523,659,784,1046].forEach((f,i)=>setTimeout(()=>toneSfx(f,0.22,'sine',0.22),i*110)); },
+  lose(){ [400,320,260,200].forEach((f,i)=>setTimeout(()=>toneSfx(f,0.28,'sawtooth',0.18),i*130)); },
+  button(){ toneSfx(320,0.05,'sine',0.14); },
+};
+function toggleMute(){
+  muted=!muted;
+  const btn=document.getElementById('muteBtn');
+  const waves=document.getElementById('muteWaves');
+  if(btn) btn.setAttribute('aria-label', muted ? 'Unmute sound' : 'Mute sound');
+  if(waves){
+    // muted: hide the sound-wave arcs and draw a hand-inked X instead
+    waves.innerHTML = muted
+      ? '<path d="M69,28 L93,72" stroke="#ff6b73"/><path d="M93,28 L69,72" stroke="#ff6b73"/>'
+      : '<path d="M70,33 Q83,50 70,67"/><path d="M79,22 Q99,50 79,78"/>';
+  }
+}
+
+const clamp = (v,a,b)=>v<a?a:v>b?b:v;
+
+const lerp  = (a,b,t)=>a+(b-a)*t;
+const rand  = (a,b)=>a+Math.random()*(b-a);
+const randInt=(a,b)=>Math.floor(rand(a,b+1));
+const TAU = Math.PI*2;
+// Diminishing-returns soldier count used for damage math: linear up to
+// squadPowerCap, then a slow square-root tail so huge squads stay strong
+// without trivializing every fight.
+function effectiveSquadPower(n){
+  const cap = CONFIG.squadPowerCap;
+  if(n<=cap) return n;
+  return cap + Math.sqrt(n-cap)*CONFIG.squadOverflowSoftener;
+}
+
+/* ------------------------------- canvas ---------------------------------- */
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+let DPR = 1, scaleX = 1, scaleY = 1;
+let hudTopDynamic = 34;
+function resize(){
+  const r = canvas.getBoundingClientRect();
+  DPR = Math.min(window.devicePixelRatio||1, 2.5);
+  canvas.width  = Math.round(r.width  * DPR);
+  canvas.height = Math.round(r.height * DPR);
+  scaleX = canvas.width  / CONFIG.W;
+  scaleY = canvas.height / CONFIG.H;
+
+  // The pause/mute buttons are real DOM elements positioned with
+  // env(safe-area-inset-*), which varies a lot by device (notch, Dynamic
+  // Island, none at all). Rather than guess a fixed HUD offset and risk it
+  // overlapping on some phones (as a fixed guess did), measure where the
+  // buttons actually rendered and push the canvas HUD below them.
+  const pauseBtnEl = document.getElementById('pauseBtn');
+  const muteBtnEl = document.getElementById('muteBtn');
+  let lowestBtnBottomCss = 0;
+  if(pauseBtnEl) lowestBtnBottomCss = Math.max(lowestBtnBottomCss, pauseBtnEl.getBoundingClientRect().bottom - r.top);
+  if(muteBtnEl) lowestBtnBottomCss = Math.max(lowestBtnBottomCss, muteBtnEl.getBoundingClientRect().bottom - r.top);
+  const logicalBtnBottom = lowestBtnBottomCss * (CONFIG.H / Math.max(1,r.height));
+  hudTopDynamic = Math.max(34, logicalBtnBottom + 10);
+}
+window.addEventListener('resize', resize);
+
+/* --------------------------- perspective projection ----------------------- */
+// z: 0 (near/squad) .. 1 (far/horizon).  laneX: -1 (left) .. 1 (right)
+function project(z, laneX){
+  z = clamp(z,0,1);
+  const t = z;                                   // 0 near, 1 far
+  const y = lerp(CONFIG.squadY, CONFIG.horizonY, t);
+  const scale = lerp(1, CONFIG.farScale, t);
+  const x = CONFIG.W*0.5 + laneX * CONFIG.roadHalfNear * scale;
+  return { x, y, scale };
+}
+
+/* -------------------------------- input ---------------------------------- */
+// Relative drag, not absolute tap-to-position: the squad moves left/right
+// from wherever it currently is, by however far you've dragged, which is
+// what "swiping" actually means and is far more forgiving than snapping to
+// your exact touch point. clientX/clientY are always CSS pixels per the
+// pointer-event spec, so no DPR conversion belongs here at all — using
+// canvas.getBoundingClientRect().width (also CSS px) keeps the units
+// consistent (a previous version mixed in scaleX/DPR here, which caused a
+// 2-3x miscalibration on retina screens and made the control feel inverted
+// and unresponsive).
+let pointerActive = false, targetLane = 0.3, dragStartX = 0, dragStartLane = 0.3;
+function beginDrag(clientX){
+  pointerActive = true;
+  dragStartX = clientX;
+  dragStartLane = targetLane;
+}
+function updateDrag(clientX){
+  if(!pointerActive) return;
+  const r = canvas.getBoundingClientRect();
+  const deltaCss = clientX - dragStartX;
+  const deltaLane = (deltaCss / r.width) * CONFIG.dragSensitivity;
+  targetLane = clamp(dragStartLane + deltaLane, -CONFIG.laneLimit, CONFIG.laneLimit);
+}
+canvas.addEventListener('pointerdown', e=>{ beginDrag(e.clientX); canvas.setPointerCapture(e.pointerId); });
+canvas.addEventListener('pointermove', e=>{ updateDrag(e.clientX); });
+canvas.addEventListener('pointerup',   ()=>{ pointerActive=false; });
+canvas.addEventListener('pointercancel',()=>{ pointerActive=false; });
+
+
+/* -------------------------------- pools ---------------------------------- */
+const bullets = [];   // {x:lane, z, vz, dmg, color, dead}
+const zombies = [];   // {lane, z, hp, maxhp, dead, hitFlash}
+const gates   = [];   // {lane, half(0=left,1=right,2=full), z, hp, maxhp, kind, amount, dead, broken}
+const parts   = [];   // particles {x,y,vx,vy,life,max,color,size}
+const floats  = [];   // floating text {x,y,vy,life,txt,color,size}
+let bosses = [];
+let zombieIdCounter = 0;
+let pendingBlasts = []; // for bazooka's DOUBLE DETONATION perk — delayed second explosions
+
+function addParticle(x,y,vx,vy,life,color,size){ parts.push({x,y,vx,vy,life,max:life,color,size}); }
+function burst(x,y,color,n,spd){ for(let i=0;i<n;i++){const a=rand(0,TAU),s=rand(spd*0.3,spd);addParticle(x,y,Math.cos(a)*s,Math.sin(a)*s,rand(0.3,0.7),color,rand(2,5));} }
+function addFloat(x,y,txt,color,size){ floats.push({x,y,vy:-34,life:0.9,txt,color,size:size||20}); }
+// Bazooka's signature: throws a zombie off its feet (no forward progress,
+// tumbles in place), then it staggers back into line at reduced speed for a
+// while before fully recovering.
+function applyThrow(z, throwDuration, slowDuration, slowFactor){
+  z.throwTimer = throwDuration; z.throwMaxDuration = throwDuration;
+  z.slowTimer = Math.max(z.slowTimer, slowDuration); z.slowFactor = slowFactor;
+  z.spin = rand(0,TAU);
+}
+// Flamethrower's signature: ignites a zombie for damage-over-time; refreshes
+// rather than stacks if it's already burning.
+function igniteZombie(z, dmgPerSec, duration){
+  z.burnDmgPerSec = dmgPerSec; z.burnTimer = Math.max(z.burnTimer, duration);
+}
+// Finds up to `count` nearest other living zombies to `z` within a radius —
+// shared by ricochet (DUAL SMG) and any other "nearby enemies" perk.
+function nearestOthers(z, radiusLane, radiusZ, count){
+  const out = [];
+  for(const other of zombies){
+    if(other===z || other.dead) continue;
+    const dl = Math.abs(other.lane-z.lane), dz = Math.abs(other.z-z.z);
+    if(dl<=radiusLane && dz<=radiusZ) out.push({ o:other, d:dl*dl+dz*dz });
+  }
+  out.sort((a,b)=>a.d-b.d);
+  return out.slice(0,count).map(e=>e.o);
+}
+function applySlow(z, duration, factor){
+  z.slowTimer = Math.max(z.slowTimer, duration); z.slowFactor = factor;
+}
+
+/* ------------------------------- game state ------------------------------ */
+let squad, weaponTier, weaponLevels, traveled, schedule, phase, shake, fireCd, started, weaponGateSeen, zombieSpawnTimer, gateSpawnTimer, damageFlash;
+let level, bossQuota, bossesSpawned, bossPhaseActive, bossSpawnTimer, debuffTimer, paused, skylineBuildings, bgPalette, upgrades, pendingUpgrades;
+
+// The upgrade pool: every entry stacks (picking the same one again just
+// applies it again), persists for the whole run, and resets only on
+// defeat. `apply` mutates the persistent `upgrades` state object.
+const UPGRADE_POOL = [
+  { id:'dmg', name:'DAMAGE UP', desc:'+15% damage, all weapons', icon:'dmg',
+    apply:()=>{ upgrades.dmgMult += 0.15; } },
+  { id:'rate', name:'RAPID FIRE', desc:'+12% fire rate, all weapons', icon:'rate',
+    apply:()=>{ upgrades.fireRateMult = Math.max(0.4, upgrades.fireRateMult - 0.12); } },
+  { id:'reinforce', name:'REINFORCEMENTS', desc:'+3 squad, right now', icon:'squad',
+    apply:()=>{ setSquad(squad.count+3); } },
+  { id:'gateadd', name:'SUPPLY DROPS', desc:'+1 squad on every supply gate', icon:'squad',
+    apply:()=>{ upgrades.gateAddBonus += 1; } },
+  { id:'armor', name:'ARMOR PLATING', desc:'-1 squad lost per hit (min 1)', icon:'armor',
+    apply:()=>{ upgrades.armor += 1; } },
+  { id:'splash', name:'BIGGER BLASTS', desc:'+25% bazooka splash radius & damage', icon:'splash',
+    apply:()=>{ upgrades.splashMult += 0.25; } },
+  { id:'burn', name:'HOTTER FLAMES', desc:'+25% flamethrower burn damage', icon:'burn',
+    apply:()=>{ upgrades.burnMult += 0.25; } },
+  { id:'stun', name:'HEAVY STOCK', desc:'+0.4s shotgun stun duration', icon:'stun',
+    apply:()=>{ upgrades.stunBonus += 0.4; } },
+  { id:'weaponlevel', name:'FIELD UPGRADE', desc:'instantly level up your current weapon', icon:'weapon',
+    apply:()=>{ weaponLevels[weaponTier] += 1; checkPerkUnlock(weaponTier); } },
+  { id:'bossdmg', name:'BOSS SLAYER', desc:'+20% damage vs bosses', icon:'boss',
+    apply:()=>{ upgrades.bossDmgMult += 0.2; } },
+  { id:'spread', name:'WIDE BARRELS', desc:'+15% firing cone width, all weapons', icon:'spread',
+    apply:()=>{ upgrades.spreadMult += 0.15; } },
+  { id:'revive', name:'FIELD MEDIC', desc:'every 30 kills, +1 squad', icon:'medic',
+    apply:()=>{ upgrades.killReviveEvery = Math.max(12, upgrades.killReviveEvery - 6); } },
+];
+function freshUpgrades(){
+  return { dmgMult:1, fireRateMult:1, gateAddBonus:0, armor:0, splashMult:1, burnMult:1,
+    stunBonus:0, bossDmgMult:1, spreadMult:1, killReviveEvery:0, killCount:0 };
+}
+
+function makeFormation(n){
+  // Rank-and-file packing, capped to formationHalfWidth — the squad always
+  // fits inside one lane no matter how big it gets (extra soldiers add more
+  // ranks behind, not more width), which also keeps it from spilling across
+  // the median into the gate lane.
+  const out = [];
+  const halfW = CONFIG.formationHalfWidth;
+  const colSpacing = CONFIG.soldierSpacing;
+  const rowSpacing = CONFIG.soldierSpacing*0.95;
+  const perRow = Math.max(1, Math.floor((halfW*2)/colSpacing)+1);
+  const m = Math.min(n, CONFIG.maxRenderSoldiers);
+  for(let i=0;i<m;i++){
+    const row = Math.floor(i/perRow);
+    const col = i % perRow;
+    const rowCount = Math.min(perRow, m-row*perRow);
+    const colOffset = rowCount>1 ? (col-(rowCount-1)/2)*colSpacing : 0;
+    out.push({ ox: clamp(colOffset,-halfW,halfW), oz: row*rowSpacing, seed: Math.random() });
+  }
+  // far rows first for correct overlap
+  out.sort((p,q)=>q.oz-p.oz);
+  return out;
+}
+
+function shuffle(arr){
+  for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; }
+  return arr;
+}
+function buildLevel(){
+  // Randomized every level: which weapon each gate offers, what order gates
+  // come in, and where the bonus/penalty gates land. Each weapon gate is
+  // tagged with one specific weapon (shown on it) — breaking it equips
+  // exactly that weapon, so you choose your loadout instead of being pushed
+  // through a fixed sequence you can't back out of.
+  schedule = [];
+  let d = 1.4;
+  const events = [];
+  let lastTier = -1;
+  for(let i=0;i<6;i++){
+    let tier;
+    do { tier = randInt(0, CONFIG.weapons.length-1); } while(tier===lastTier && CONFIG.weapons.length>1);
+    lastTier = tier;
+    events.push({ kind:'weapon', targetTier:tier });
+  }
+  events.push({ kind:'add', amount: randInt(1,2) });
+  events.push({ kind:'add', amount: randInt(1,2) });
+  events.push({ kind:'penalty', amount: randInt(1,2) });
+  shuffle(events);
+  for(const c of events){
+    schedule.push({ d, type:'leftgate', kind:c.kind, amount:c.amount||1, targetTier:c.targetTier });
+    d += CONFIG.eventGap;
+  }
+  // marks where the boss gauntlet for this level begins — bosses themselves
+  // are spawned by a timer in update(), not the schedule, so more can join
+  // mid-fight without waiting for the first one to die
+  schedule.push({ d: d+0.6, type:'startBossPhase' });
+  schedule.sort((p,q)=>p.d-q.d);
+}
+
+function generateSkyline(){
+  // Generated ONCE per level and stored — re-rolling these every frame (the
+  // old behavior) made the buildings visibly jitter/"jump" each frame.
+  skylineBuildings = [];
+  for(let i=0;i<14;i++){
+    skylineBuildings.push({ x:-20+i*36, w:rand(18,30), h:rand(30,90) });
+  }
+}
+
+function setupLevel(){
+  // Per-level reset: rebuilds the gate schedule, horde timers, boss quota,
+  // and background — but deliberately does NOT touch squad/weapon/upgrades,
+  // which carry over between levels within a run.
+  traveled = 0; fireCd = 0; shake = 0; weaponGateSeen = 0;
+  zombieSpawnTimer = 0.4; gateSpawnTimer = 0;
+  bossesSpawned = 0; bossPhaseActive = false; bossSpawnTimer = 0;
+  bossQuota = Math.min(CONFIG.bossQuotaMax, CONFIG.bossQuotaBase + Math.floor((level-1)/CONFIG.bossQuotaPerLevels));
+  bosses.length = 0;
+  bullets.length=zombies.length=gates.length=parts.length=floats.length=pendingBlasts.length=0;
+  bgPalette = BACKGROUNDS[(level-1) % BACKGROUNDS.length];
+  generateSkyline();
+  buildLevel();
+}
+
+function reset(){
+  level = 1;
+  upgrades = freshUpgrades();
+  debuffTimer = 0; paused = false;
+  squad = { lane:0.3, count:CONFIG.startSoldiers, formation:makeFormation(CONFIG.startSoldiers), muzzle:0 };
+  weaponTier = 0; weaponLevels = new Array(CONFIG.weapons.length).fill(0);
+  damageFlash = 0;
+  phase = 'run';
+  targetLane = 0.3; pointerActive = false;
+  setupLevel();
+}
+
+function setSquad(n){
+  n = clamp(Math.round(n), 0, CONFIG.maxSquad);
+  if(n !== squad.count){ squad.count = n; squad.formation = makeFormation(n); }
+}
+// Applies the ARMOR PLATING upgrade (flat reduction, floor of 1 lost per
+// hit) to any squad-damaging event, and returns how much was actually lost
+// so callers can show an accurate floating number.
+function applySquadLoss(rawAmount){
+  if(rawAmount<=0) return 0;
+  const reduced = Math.max(1, rawAmount - (upgrades.armor||0));
+  setSquad(squad.count - reduced);
+  return reduced;
+}
+function onZombieKilled(){
+  upgrades.killCount = (upgrades.killCount||0) + 1;
+  if(upgrades.killReviveEvery>0 && upgrades.killCount>=upgrades.killReviveEvery){
+    upgrades.killCount = 0;
+    setSquad(squad.count+1);
+  }
+}
+
+/* ------------------------------ spawning --------------------------------- */
+function spawnLeftGate(kind, amount, targetTier){
+  gates.push(makeGate(kind, amount, 0, targetTier));   // always the left lane now
+}
+function makeGate(kind, amount, half, targetTier){
+  // wall HP — weapon gates get gradually tougher each time one appears, and
+  // every gate type also gets tougher level over level, so the run still
+  // ramps in difficulty even though squad growth is small.
+  const lvlMult = 1 + (level-1)*CONFIG.levelDifficultyPerLevel;
+  let hp;
+  if(kind==='add')        hp = (50 + amount*25) * lvlMult;
+  else if(kind==='weapon'){ hp = (70 + weaponGateSeen*45) * lvlMult; weaponGateSeen++; }
+  else                     hp = (60 + amount*20) * lvlMult; // penalty
+  hp = Math.round(hp);
+  return { half, z:1, hp, maxhp:hp, kind, amount, targetTier, dead:false, broken:false };
+}
+// Continuous nonstop horde: spawns one row of zombies into the right lane.
+// Called on a timer from update() — never via the schedule — so it never
+// stops until the level's bosses are dead or the run ends.
+function spawnZombieRow(traveledDist){
+  const lvlMult = 1 + (level-1)*CONFIG.levelDifficultyPerLevel;
+  const hp = Math.round(CONFIG.zombieHP * (1 + traveledDist*CONFIG.zombieHpPerDistance) * lvlMult);
+  const speed = CONFIG.zombieSpeed * (1 + traveledDist*CONFIG.zombieSpeedPerDistance) * (1 + (level-1)*CONFIG.levelDifficultyPerLevel*0.5);
+  const count = Math.min(CONFIG.zombieRowCountMax,
+    Math.round((CONFIG.zombieRowCountStart + traveledDist*CONFIG.zombieRowCountGrowth) * lvlMult));
+  const colMin = 0.14, colMax = 0.80, colSpan = colMax-colMin;
+  // Spawn right at the visible boundary (z just under 1) rather than beyond
+  // it, so rows appear immediately in view instead of sitting invisibly
+  // stacked at the horizon until they cross in.
+  const baseZ = 0.99 + rand(-0.008,0.008);
+  for(let i=0;i<count;i++){
+    const lane = colMin + (count>1 ? (i/(count-1))*colSpan : colSpan*0.5) + rand(-0.025,0.025);
+    zombies.push({ id: zombieIdCounter++, lane: clamp(lane,colMin,colMax), z: baseZ+rand(-0.006,0.006),
+      hp, maxhp:hp, speed, dead:false, hitFlash:0, wob:rand(0,TAU), variant: i%3,
+      throwTimer:0, throwMaxDuration:0, slowTimer:0, slowFactor:1, spin:0, stunTimer:0,
+      burnTimer:0, burnDmgPerSec:0, burnSlow:false, shredStacks:0 });
+  }
+}
+function spawnBoss(){
+  // Size the boss to the squad's *current* firepower so the fight is always
+  // a fair ~bossFightSeconds DPS race, whether the squad rushed weapon
+  // tiers or stacked raw numbers. Each extra boss spawned within the same
+  // level (the "mixed" sequential-but-timed gauntlet) is a bit tankier than
+  // the last, and the whole level is tougher at higher level numbers.
+  const w = CONFIG.weapons[weaponTier];
+  const dmgMult = currentDamageMultiplier() * upgrades.bossDmgMult;
+  const power = Math.max(1, effectiveSquadPower(squad.count) * w.streams);
+  const shots = Math.min(Math.round(power), CONFIG.maxShooters);
+  const dmgPerShot = w.dmg * dmgMult * (power / shots);
+  const dps = (shots * dmgPerShot) / w.interval;
+  const extraRamp = 1 + bossesSpawned*CONFIG.bossHpRampPerExtra;
+  const levelRamp = 1 + (level-1)*CONFIG.levelDifficultyPerLevel*0.6;
+  const hp = Math.max(CONFIG.bossMinHP, Math.round(dps * CONFIG.bossFightSeconds * extraRamp * levelRamp));
+  bosses.push({ z: CONFIG.bossStartZ + bossesSpawned*0.07, hp, maxhp:hp,
+    lane: bossesSpawned%2===0 ? 0 : rand(-0.18,0.18), hitFlash:0, step:rand(0,10), dead:false });
+  bossesSpawned++;
+  gateSpawnTimer = rand(CONFIG.bossGateIntervalMin, CONFIG.bossGateIntervalMax);
+}
+function levelClear(){
+  phase = 'upgrade';
+  pendingUpgrades = shuffle(UPGRADE_POOL.slice()).slice(0, CONFIG.upgradeChoicesPerLevel);
+  renderUpgradeScreen();
+  document.getElementById('upgradeScreen').classList.remove('hidden');
+  SFX.win();
+}
+function chooseUpgrade(i){
+  SFX.button();
+  pendingUpgrades[i].apply();
+  document.getElementById('upgradeScreen').classList.add('hidden');
+  level++;
+  setupLevel();
+  phase = 'run';
+}
+
+// Small hand-drawn SVG icons for the upgrade cards — same thick-ink comic
+// style as the rest of the UI (no emoji anywhere).
+const UPGRADE_ICONS = {
+  dmg: '<path d="M50,12 L62,40 L88,40 L66,58 L75,86 L50,68 L25,86 L34,58 L12,40 L38,40 Z"/>',
+  rate: '<path d="M22,20 L52,20 L34,46 L58,46 L24,86 L40,52 L18,52 Z"/>',
+  squad: '<circle cx="35" cy="38" r="14"/><circle cx="65" cy="38" r="14"/><path d="M14,82 Q14,56 35,56 Q56,56 56,82 Z"/><path d="M44,82 Q44,56 65,56 Q86,56 86,82 Z" opacity="0.7"/>',
+  armor: '<path d="M50,10 L86,26 L86,52 Q86,80 50,92 Q14,80 14,52 L14,26 Z"/>',
+  splash: '<circle cx="50" cy="50" r="14"/><circle cx="50" cy="50" r="28" fill="none"/><circle cx="50" cy="50" r="40" fill="none" opacity="0.5"/>',
+  burn: '<path d="M50,10 Q70,34 62,52 Q80,46 76,66 Q72,90 50,92 Q28,90 24,66 Q20,46 38,52 Q30,34 50,10 Z"/>',
+  stun: '<circle cx="30" cy="30" r="7"/><circle cx="70" cy="26" r="9"/><circle cx="78" cy="62" r="6"/><circle cx="40" cy="74" r="8"/>',
+  weapon: '<path d="M18,57 L38,58 L59,29 L57,81 L37,73 L17,72 Z"/>',
+  boss: '<circle cx="50" cy="42" r="30"/><rect x="32" y="66" width="36" height="20" rx="4"/><circle cx="40" cy="38" r="6" fill="#0a0f1a"/><circle cx="60" cy="38" r="6" fill="#0a0f1a"/>',
+  spread: '<path d="M50,18 L20,86 Q50,68 80,86 Z"/>',
+  medic: '<rect x="40" y="14" width="20" height="72" rx="4"/><rect x="14" y="40" width="72" height="20" rx="4"/>',
+};
+function upgradeIconSVG(key){
+  const body = UPGRADE_ICONS[key] || UPGRADE_ICONS.dmg;
+  return `<svg viewBox="0 0 100 100" stroke="#0a0f1a" stroke-width="6" stroke-linejoin="round" stroke-linecap="round" fill="#ffd24d">${body}</svg>`;
+}
+function renderUpgradeScreen(){
+  document.getElementById('upgradeLevelTitle').textContent = 'LEVEL '+level+' CLEARED';
+  const wrap = document.getElementById('upgradeCards');
+  wrap.innerHTML = '';
+  pendingUpgrades.forEach((u,i)=>{
+    const card = document.createElement('button');
+    card.className = 'upgradeCard';
+    card.innerHTML = `<div class="upgradeIcon">${upgradeIconSVG(u.icon)}</div>
+      <div class="upgradeText"><div class="upgradeName">${u.name}</div><div class="upgradeDesc">${u.desc}</div></div>`;
+    card.addEventListener('click', ()=>chooseUpgrade(i));
+    wrap.appendChild(card);
+  });
+}
+
+// Small hand-drawn per-weapon icons for the read-only PERKS codex — distinct
+// silhouette per gun so the list is scannable, same thick-ink comic style.
+const WEAPON_ICON_PATHS = [
+  '<path d="M18,57 L38,58 L59,29 L57,81 L37,73 L17,72 Z"/>', // pistol
+  '<path d="M14,52 L74,46 L86,50 L86,58 L74,60 L14,60 Z"/><rect x="30" y="60" width="8" height="16"/>', // machine gun
+  '<path d="M12,48 L70,40 L70,52 L12,58 Z"/><path d="M12,56 L70,54 L70,66 L12,68 Z"/>', // shotgun (double barrel)
+  '<path d="M14,40 L58,34 L58,44 L14,48 Z"/><path d="M14,56 L58,58 L58,68 L14,66 Z"/>', // dual smg (two barrels)
+  '<path d="M14,46 L66,38 L82,46 L82,58 L66,62 L14,56 Z"/><circle cx="80" cy="52" r="9"/>', // bazooka
+  '<path d="M50,10 Q70,34 62,52 Q80,46 76,66 Q72,90 50,92 Q28,90 24,66 Q20,46 38,52 Q30,34 50,10 Z"/>', // flamethrower
+];
+function renderPerksScreen(){
+  const wrap = document.getElementById('perksList');
+  wrap.innerHTML = '';
+  CONFIG.weapons.forEach((w,i)=>{
+    const block = document.createElement('div');
+    block.className = 'perkWeapon';
+    const rows = (w.perks||[]).map(pk=>`
+      <div class="perkRow">
+        <div class="perkLevel">LV${pk.level}</div>
+        <div class="perkInfo"><div class="perkName">${pk.name}</div><div class="perkDesc">${pk.desc}</div></div>
+      </div>`).join('');
+    block.innerHTML = `<div class="perkWeaponHead">
+        <div class="icon"><svg viewBox="0 0 100 100" stroke="#0a0f1a" stroke-width="6" stroke-linejoin="round" stroke-linecap="round" fill="${w.color}">${WEAPON_ICON_PATHS[i]||''}</svg></div>
+        <div class="perkWeaponName">${w.name}</div>
+      </div>${rows}`;
+    wrap.appendChild(block);
+  });
+}
+
+function togglePause(){
+  if(phase!=='run') return; // no pausing during the upgrade/end screens
+  paused = !paused;
+  pauseOverlay.classList.toggle('hidden', !paused);
+}
+
+/* ------------------------------- firing ---------------------------------- */
+// Uncapped weapon leveling: linear +25%/level for the first 5 levels (exactly
+// as before), then the marginal gain per level softens (sqrt-ish) so it
+// never stops mattering but also never produces absurd numbers 40 levels in.
+function weaponLevelMultiplier(lvl){
+  lvl = lvl||0;
+  if(lvl<=5) return 1 + CONFIG.weaponLevelDamageBonus*lvl;
+  const base = 1 + CONFIG.weaponLevelDamageBonus*5;
+  return base + CONFIG.weaponLevelDamageBonus*Math.pow(lvl-5, 0.75);
+}
+function currentDamageMultiplier(){
+  let m = weaponLevelMultiplier(weaponLevels[weaponTier]||0) * (upgrades?upgrades.dmgMult:1);
+  if(debuffTimer>0) m *= CONFIG.penaltyWeakenFactor;
+  return m;
+}
+// Has weapon `tier` reached perk milestone `level` (10/20/30...)?
+function hasPerk(tier, lvl){ return (weaponLevels[tier]||0) >= lvl; }
+// Called right after a weapon levels up — if the new level lands exactly on
+// a milestone (10/20/30...), surfaces it clearly so the new effect doesn't
+// just silently start working with no feedback.
+function checkPerkUnlock(tier, atPos){
+  const lvl = weaponLevels[tier];
+  if(!CONFIG.weaponPerkLevels.includes(lvl)) return;
+  const perkDef = (CONFIG.weapons[tier].perks||[]).find(pk=>pk.level===lvl);
+  if(!perkDef) return;
+  const pos = atPos || project(0.15, squad.lane);
+  addFloat(pos.x, pos.y-30, 'PERK UNLOCKED', '#ffd24d', 22);
+  addFloat(pos.x, pos.y-6, perkDef.name, '#7fd4ff', 16);
+  SFX.weaponLevel(); SFX.win();
+  shake = Math.max(shake, 8);
+}
+function fire(dt){
+  const w = CONFIG.weapons[weaponTier];
+  const dmgMult = currentDamageMultiplier();
+  const interval = Math.max(0.02, w.interval * upgrades.fireRateMult);
+  const spread = w.spread * upgrades.spreadMult;
+
+  // Perk flags — resolved once per volley from the current weapon's level,
+  // then baked onto each bullet so they stay consistent even if the player
+  // switches weapons mid-flight.
+  const pierceLeft =
+    weaponTier===0 ? (hasPerk(0,30)?2:hasPerk(0,10)?1:0) :
+    weaponTier===1 ? (hasPerk(1,30)?2:hasPerk(1,20)?1:0) : 0;
+  const critChance = (weaponTier===0 && hasPerk(0,20)) ? 0.2 : 0;
+  const shredOnHit = (weaponTier===1 && hasPerk(1,10));
+  const ricochetCount = weaponTier===3 ? (hasPerk(3,20)?2:hasPerk(3,10)?1:0) : 0;
+  const ricochetSlow = (weaponTier===3 && hasPerk(3,30));
+  const explosivePellet = (weaponTier===2 && hasPerk(2,10));
+  const explosiveBigger = (weaponTier===2 && hasPerk(2,20));
+  const explosiveIgnite = (weaponTier===2 && hasPerk(2,30));
+  const bunkerBuster = (weaponTier===4 && hasPerk(4,10)) ? 1.4 : 1;
+  const doubleDeto = (weaponTier===4 && hasPerk(4,20));
+  const concussive = (weaponTier===4 && hasPerk(4,30));
+  const cryoSlow = (weaponTier===5 && hasPerk(5,10));
+  const wildfire = (weaponTier===5 && hasPerk(5,20)) ? 1.5 : 1;
+  const wildfireRadius = (weaponTier===5 && hasPerk(5,20)) ? 1.3 : 1;
+  const combustion = (weaponTier===5 && hasPerk(5,30));
+
+  fireCd -= dt;
+  while(fireCd <= 0 && squad.count>0){
+    fireCd += interval;
+    // Damage scales with squad size but with diminishing returns past
+    // squadPowerCap (see effectiveSquadPower). Bullet *lanes* are still
+    // capped at maxShooters for performance; any remaining power is folded
+    // into damage-per-bullet so total DPS still tracks squad strength.
+    const power = Math.max(1, effectiveSquadPower(squad.count) * w.streams);
+    const shots = Math.min(Math.round(power), CONFIG.maxShooters);
+    const dmgPerShot = w.dmg * dmgMult * (power / shots);
+    const formationLen = squad.formation.length || 1;
+    for(let i=0;i<shots;i++){
+      const f = squad.formation[i % formationLen] || {ox:0};
+      const laneOffset = clamp(f.ox, -spread, spread) + rand(-0.015,0.015);
+      const crit = critChance>0 && Math.random()<critChance;
+      bullets.push({ x: squad.lane + laneOffset, z:0.04, vz:w.speed, dmg: crit?dmgPerShot*2:dmgPerShot, color:w.color, crit,
+        explosive: !!w.explosive,
+        splashRadiusLane: w.splashRadiusLane*upgrades.splashMult*bunkerBuster, splashRadiusZ: w.splashRadiusZ*upgrades.splashMult*bunkerBuster,
+        splashDmg: w.splashDmg*dmgMult*upgrades.splashMult*bunkerBuster,
+        doubleDeto, concussive,
+        knockback: !!w.knockback, knockDist: w.knockDist, stun: !!w.stun, stunDuration: w.stunDuration ? w.stunDuration+upgrades.stunBonus : w.stunDuration,
+        staggerRadiusLane: w.staggerRadiusLane, staggerRadiusZ: w.staggerRadiusZ,
+        explosivePellet, explosiveBigger, explosiveIgnite,
+        throw: !!w.throw, throwDuration: w.throwDuration, slowDuration: w.slowDuration, slowFactor: w.slowFactor,
+        burn: !!w.burn, burnDmgPerSec: w.burnDmgPerSec*dmgMult*upgrades.burnMult*wildfire, burnDuration: w.burnDuration*wildfire,
+        igniteRadiusLane: w.igniteRadiusLane*wildfireRadius, igniteRadiusZ: w.igniteRadiusZ*wildfireRadius,
+        cryoSlow, combustion,
+        pierceLeft, hitIds: (pierceLeft>0 || ricochetCount>0) ? new Set() : null,
+        shredOnHit, ricochetCount, ricochetSlow,
+        projectile: w.projectile||'bullet', psize: w.psize||1, laser: !!w.laser, seed: Math.random()*10 });
+    }
+    squad.muzzle = 0.06;
+    SFX.fire(weaponTier);
+  }
+}
+
+/* ------------------------------- updates --------------------------------- */
+function update(dt){
+  if(phase!=='run' || paused) { updateFx(dt); return; }
+
+  // steer squad toward finger
+  squad.lane = lerp(squad.lane, clamp(targetLane,-CONFIG.laneLimit,CONFIG.laneLimit),
+                    1-Math.exp(-CONFIG.laneFollow*dt));
+  if(squad.muzzle>0) squad.muzzle-=dt;
+  if(debuffTimer>0) debuffTimer-=dt;
+
+  // advance the bridge
+  traveled += CONFIG.scrollSpeed*dt;
+
+  // release scheduled events (left-lane gates and the boss-phase marker —
+  // the right-lane horde is continuous, handled below)
+  while(schedule.length && traveled >= schedule[0].d){
+    const ev = schedule.shift();
+    if(ev.type==='leftgate') spawnLeftGate(ev.kind, ev.amount, ev.targetTier);
+    else if(ev.type==='startBossPhase'){
+      bossPhaseActive = true;
+      spawnBoss();
+      bossSpawnTimer = rand(CONFIG.bossSpawnIntervalMin, CONFIG.bossSpawnIntervalMax);
+    }
+  }
+
+  // "mixed" boss gauntlet: a new boss joins on a timer, not when the
+  // previous one dies — a fast player effectively sees them one at a time,
+  // a slow player can end up fighting several at once.
+  if(bossPhaseActive && bossesSpawned<bossQuota){
+    bossSpawnTimer -= dt;
+    if(bossSpawnTimer<=0){
+      spawnBoss();
+      bossSpawnTimer = rand(CONFIG.bossSpawnIntervalMin, CONFIG.bossSpawnIntervalMax);
+    }
+  }
+
+  // nonstop zombie horde — never pauses, runs the whole game (including
+  // during the boss fight) until the level's bosses are dead or you lose;
+  // safety-capped so an ignored horde can't tank performance.
+  zombieSpawnTimer -= dt;
+  if(zombieSpawnTimer<=0){
+    if(zombies.length < CONFIG.maxAliveZombies) spawnZombieRow(traveled);
+    const interval = Math.max(CONFIG.zombieSpawnIntervalMin,
+      CONFIG.zombieSpawnIntervalStart - traveled*CONFIG.zombieSpawnIntervalDecay);
+    zombieSpawnTimer += interval;
+  }
+
+  // weapon gates keep trickling in during the boss fight too, so you can
+  // still power up mid-fight instead of being locked into whatever you
+  // had when the boss spawned
+  if(bossPhaseActive){
+    gateSpawnTimer -= dt;
+    if(gateSpawnTimer<=0 && !gates.some(g=>!g.broken && g.kind==='weapon')){
+      let tier;
+      do { tier = randInt(0, CONFIG.weapons.length-1); } while(tier===weaponTier && CONFIG.weapons.length>1);
+      spawnLeftGate('weapon', 1, tier);
+      gateSpawnTimer = rand(CONFIG.bossGateIntervalMin, CONFIG.bossGateIntervalMax);
+    }
+  }
+
+  fire(dt);
+
+  // bullets
+  for(const b of bullets){
+    b.z += b.vz*dt;
+    if(b.z>1.25) b.dead=true;
+  }
+
+  // gates approach
+  for(const g of gates){
+    if(g.broken) continue;
+    g.z -= CONFIG.scrollSpeed*dt;
+    // bullet collisions (only the left lane carries a gate now) — uses the
+    // gate's actual edge, not just "any negative lane", so a wide-spread
+    // weapon's stray shots near the median don't register as hitting it
+    // unless they really reach its drawn position
+    const inHalf = (lane)=> lane <= CONFIG.gateLaneEdge;
+    for(const b of bullets){
+      if(b.dead) continue;
+      if(Math.abs(b.z-g.z)<0.05 && inHalf(b.x)){
+        b.dead=true; g.hp -= b.dmg;
+        if(Math.random()<0.5){ const p=project(g.z,b.x); addParticle(p.x,p.y,rand(-30,30),rand(-40,-10),0.3,'#cdeeff',rand(1,3)); }
+        if(g.hp<=0){ breakGate(g); }
+      }
+    }
+    // reached the squad still intact -> acts as a wall and costs soldiers
+    if(g.z<=0.03 && !g.broken){
+      const inLane = squad.lane <= CONFIG.gateLaneEdge;
+      if(inLane){
+        const rawLoss = Math.min(squad.count, Math.ceil(g.hp/14));
+        const loss = applySquadLoss(rawLoss);
+        if(loss>0){ const p=project(0.04,squad.lane); addFloat(p.x,p.y-40,'-'+loss,'#ff6b73',24); shake=8; damageFlash=Math.max(damageFlash,0.35); }
+      }
+      g.broken=true; g.dead=true;
+    }
+  }
+
+  // zombies
+  for(const z of zombies){
+    if(z.dead) continue;
+    // movement priority: stunned (shotgun) > thrown (bazooka tumble) >
+    // staggering back to speed (bazooka recovery) > normal approach.
+    // Lane drift while tumbling is clamped — unclamped drift was pushing
+    // zombies sideways through the road edge over a long throw.
+    if(z.stunTimer>0){
+      z.stunTimer -= dt; // frozen in place, no movement at all
+    } else if(z.throwTimer>0){
+      z.throwTimer -= dt; z.spin += dt*12;
+      z.lane = clamp(z.lane + Math.sin(z.spin)*dt*0.25, 0.06, 0.94);
+    } else if(z.slowTimer>0){
+      z.slowTimer -= dt;
+      z.z -= (z.speed||CONFIG.zombieSpeed) * (z.slowFactor||1) * dt;
+    } else {
+      z.z -= (z.speed||CONFIG.zombieSpeed)*dt;
+    }
+    z.wob += dt*6;
+    if(z.hitFlash>0) z.hitFlash-=dt;
+    // burning damage-over-time, independent of any new hits this frame
+    if(z.burnTimer>0 && !z.dead){
+      z.hp -= z.burnDmgPerSec*dt; z.burnTimer -= dt;
+      if(Math.random()<0.5){ const p=project(z.z,z.lane); addParticle(p.x,p.y-10*(p.scale||1),rand(-8,8),rand(-30,-10),0.35,'#ffb05a',rand(1.5,3)); }
+      if(z.hp<=0){
+        z.dead=true; const q=project(z.z,z.lane); burst(q.x,q.y,'#ff8a3d',8,150); onZombieKilled();
+        if(z.combustionPerk){
+          // FLAMETHROWER's COMBUSTION perk — a fire death triggers a small
+          // burst of damage to anything nearby, chaining through a cluster
+          for(const other of nearestOthers(z, 0.16, 0.09, 6)){
+            other.hp -= z.maxhp*0.18; other.hitFlash=0.08;
+            if(other.hp<=0 && !other.dead){ other.dead=true; const r=project(other.z,other.lane); burst(r.x,r.y,'#ff8a3d',6,140); onZombieKilled(); }
+          }
+        }
+      }
+    }
+    for(const b of bullets){
+      if(b.dead || z.dead) continue;
+      if(b.hitIds && b.hitIds.has(z.id)) continue; // pierce/ricochet bullets can't re-hit the same target
+      if(Math.abs(b.z-z.z)<0.05 && Math.abs(b.x-z.lane)<0.07){
+        // ARMOR SHRED (machine gun) — each stack makes a zombie take more
+        // damage from every source, not just the machine gun itself
+        const shredAmp = 1 + 0.04*(z.shredStacks||0);
+        z.hp -= b.dmg*shredAmp; z.hitFlash=0.08;
+        if(b.hitIds) b.hitIds.add(z.id);
+        const p=project(z.z,z.lane); if(Math.random()<0.6) addParticle(p.x,p.y,rand(-25,25),rand(-30,5),0.3, b.crit?'#ffe27a':'#6fe089',rand(1,3));
+        if(b.shredOnHit) z.shredStacks = Math.min(5,(z.shredStacks||0)+1);
+
+        // PIERCING ROUNDS (pistol / machine gun) — keep flying instead of
+        // dying on the first target, until pierce charges run out
+        if(b.pierceLeft>0){ b.pierceLeft--; } else { b.dead=true; }
+
+        if(b.knockback){
+          z.z = Math.min(1.05, z.z + b.knockDist);
+          addParticle(p.x,p.y,rand(-30,30),rand(-20,5),0.3,'#d9c9a8',rand(2,4));
+        }
+        if(b.stun){ z.stunTimer = Math.max(z.stunTimer, b.stunDuration); }
+        if(b.staggerRadiusLane){
+          // shotgun's blast staggers a cluster, not just the one target —
+          // this is what makes the push/stun actually visible even when the
+          // directly-hit zombie dies instantly from the pellet damage
+          for(const other of zombies){
+            if(other===z || other.dead) continue;
+            if(Math.abs(other.lane-z.lane)<=b.staggerRadiusLane && Math.abs(other.z-z.z)<=b.staggerRadiusZ){
+              if(b.knockback) other.z = Math.min(1.05, other.z + b.knockDist*0.7);
+              if(b.stun) other.stunTimer = Math.max(other.stunTimer, b.stunDuration);
+            }
+          }
+        }
+        // EXPLOSIVE / BIGGER / INCENDIARY SHELLS (shotgun perk tree) — each
+        // pellet that lands also pops a small blast, distinct from the
+        // base weapon's existing knockback+stun
+        if(b.explosivePellet){
+          const rl = b.explosiveBigger?0.17:0.11, rz = b.explosiveBigger?0.10:0.07;
+          const blastDmg = b.dmg * (b.explosiveBigger?0.65:0.45);
+          burst(p.x,p.y,'#ffcf8a',10,180);
+          for(const other of nearestOthers(z, rl, rz, 8)){
+            other.hp -= blastDmg*(1+0.04*(other.shredStacks||0)); other.hitFlash=0.08;
+            if(b.explosiveIgnite) igniteZombie(other, 18, 2.2);
+            if(other.hp<=0 && !other.dead){ other.dead=true; const r=project(other.z,other.lane); burst(r.x,r.y,'#46e08a',6,140); onZombieKilled(); }
+          }
+        }
+        // RICOCHET / DOUBLE RICOCHET / FROSTED ROUNDS (dual smg perk tree)
+        if(b.ricochetCount>0){
+          for(const other of nearestOthers(z, 0.18, 0.1, b.ricochetCount)){
+            const rdmg = b.dmg*0.6*(1+0.04*(other.shredStacks||0));
+            other.hp -= rdmg; other.hitFlash=0.08;
+            addParticle(p.x,p.y,rand(-20,20),rand(-20,5),0.25,'#caffe0',rand(1,2.5));
+            if(b.ricochetSlow) applySlow(other, 1.4, 0.5);
+            if(other.hp<=0 && !other.dead){ other.dead=true; const r=project(other.z,other.lane); burst(r.x,r.y,'#46e08a',6,140); onZombieKilled(); }
+          }
+        }
+        if(b.throw){ applyThrow(z, b.throwDuration, b.slowDuration, b.slowFactor); }
+        if(b.burn){
+          igniteZombie(z, b.burnDmgPerSec, b.burnDuration);
+          if(b.combustion) z.combustionPerk = true;
+          if(b.cryoSlow) applySlow(z, b.burnDuration, 0.55);
+          for(const other of zombies){
+            if(other===z || other.dead) continue;
+            if(Math.abs(other.lane-z.lane)<=b.igniteRadiusLane && Math.abs(other.z-z.z)<=b.igniteRadiusZ){
+              igniteZombie(other, b.burnDmgPerSec, b.burnDuration);
+              if(b.combustion) other.combustionPerk = true;
+              if(b.cryoSlow) applySlow(other, b.burnDuration, 0.55);
+            }
+          }
+        }
+        if(z.hp<=0){ z.dead=true; const q=project(z.z,z.lane); burst(q.x,q.y,'#46e08a',8,160); SFX.zombieDeath(); onZombieKilled(); }
+        if(b.explosive){
+          // splash damage AND throw to nearby zombies — the bazooka's signature
+          const q=project(z.z,z.lane); burst(q.x,q.y,'#ffb05a',20,300); shake=Math.max(shake,10);
+          SFX.explosion();
+          for(const other of zombies){
+            if(other===z || other.dead) continue;
+            if(Math.abs(other.lane-z.lane)<=b.splashRadiusLane && Math.abs(other.z-z.z)<=b.splashRadiusZ){
+              other.hp -= b.splashDmg*(1+0.04*(other.shredStacks||0)); other.hitFlash=0.08;
+              if(b.throw) applyThrow(other, b.throwDuration, b.slowDuration, b.slowFactor);
+              if(b.concussive) other.stunTimer = Math.max(other.stunTimer, 0.8);
+              if(other.hp<=0){ other.dead=true; const r=project(other.z,other.lane); burst(r.x,r.y,'#46e08a',6,140); onZombieKilled(); }
+            }
+          }
+          if(b.doubleDeto){
+            // DOUBLE DETONATION — a smaller second blast at the same spot,
+            // half a second later (queued, not instant)
+            pendingBlasts.push({ x:z.lane, z:z.z, delay:0.5, dmg:b.splashDmg*0.55,
+              radiusLane:b.splashRadiusLane, radiusZ:b.splashRadiusZ });
+          }
+        }
+      }
+    }
+    if(z.z<=0.05 && !z.dead && z.throwTimer<=0 && z.stunTimer<=0){
+      z.dead=true;
+      const loss = applySquadLoss(CONFIG.zombieDamage);
+      shake=4; damageFlash=Math.max(damageFlash,0.3);
+      const p=project(0.05,z.lane); addFloat(p.x,p.y,'-'+loss,'#ff6b73',18);
+    }
+  }
+
+  // DOUBLE DETONATION (bazooka perk) — delayed second explosions queued by
+  // the collision code above
+  if(pendingBlasts.length){
+    for(let i=pendingBlasts.length-1;i>=0;i--){
+      const pb = pendingBlasts[i];
+      pb.delay -= dt;
+      if(pb.delay<=0){
+        const q=project(pb.z,pb.x); burst(q.x,q.y,'#ffb05a',16,260); shake=Math.max(shake,6); SFX.explosion();
+        for(const other of zombies){
+          if(other.dead) continue;
+          if(Math.abs(other.lane-pb.x)<=pb.radiusLane && Math.abs(other.z-pb.z)<=pb.radiusZ){
+            other.hp -= pb.dmg*(1+0.04*(other.shredStacks||0)); other.hitFlash=0.08;
+            if(other.hp<=0){ other.dead=true; const r=project(other.z,other.lane); burst(r.x,r.y,'#46e08a',6,140); onZombieKilled(); }
+          }
+        }
+        pendingBlasts.splice(i,1);
+      }
+    }
+  }
+
+  // bosses (mixed sequential-on-a-timer gauntlet — see spawn logic above)
+  for(const b of bosses){
+    if(b.dead) continue;
+    b.z -= CONFIG.bossSpeed*dt;
+    b.step += dt;
+    if(b.hitFlash>0) b.hitFlash-=dt;
+    for(const bullet of bullets){
+      if(bullet.dead) continue;
+      if(bullet.z>b.z-0.12 && Math.abs(bullet.x-b.lane)<0.34){
+        bullet.dead=true; b.hp -= bullet.dmg*upgrades.bossDmgMult; b.hitFlash=0.05; SFX.bossHit();
+      }
+    }
+    if(b.hp<=0){ b.dead=true; const q=project(b.z,b.lane); burst(q.x,q.y,'#ff5663',24,260); shake=Math.max(shake,9); }
+    else if(b.z<=CONFIG.bossReachZ){ setSquad(0); }
+  }
+  prune(bosses);
+  if(bossPhaseActive && bossesSpawned>=bossQuota && bosses.length===0){ levelClear(); }
+
+  // cleanup
+  prune(bullets); prune(zombies); prune(gates);
+
+  // lose check
+  if(squad.count<=0){ lose(); }
+
+  updateFx(dt);
+}
+
+function breakGate(g){
+  g.broken=true; g.dead=true;
+  const p = project(g.z, -0.5);
+  burst(p.x,p.y,'#bfeaff',26,260); shake=Math.max(shake,7);
+  SFX.gateBreak();
+  let txt='', col='#46e08a';
+  if(g.kind==='add'){
+    const amt = g.amount + (upgrades.gateAddBonus||0);
+    setSquad(squad.count+amt);
+    txt='+'+amt+' → '+squad.count; // running total, so the math is never ambiguous
+  } else if(g.kind==='weapon'){
+    weaponTier = g.targetTier;
+    weaponLevels[weaponTier] += 1;
+    const lvl = weaponLevels[weaponTier];
+    txt = lvl>1 ? (CONFIG.weapons[weaponTier].name+' LV'+lvl) : (CONFIG.weapons[weaponTier].name);
+    col='#ffd24d';
+    SFX.weaponLevel();
+    checkPerkUnlock(weaponTier, p);
+  } else {
+    // Red debuff gate — this used to do nothing when broken, which made it
+    // a non-threat. Now breaking it costs squad AND weakens damage output
+    // for a few seconds; avoiding it (and eating the smaller wall-impact
+    // hit instead) is often the smarter play.
+    const lost = applySquadLoss(g.amount);
+    debuffTimer = CONFIG.penaltyWeakenDuration;
+    txt = lost>0 ? ('WEAKENED -'+lost) : 'WEAKENED';
+    col='#ff6b73';
+    damageFlash = Math.max(damageFlash, 0.3);
+  }
+  addFloat(p.x, p.y, txt, col, 24);
+}
+
+function prune(arr){ for(let i=arr.length-1;i>=0;i--) if(arr[i].dead) arr.splice(i,1); }
+
+function updateFx(dt){
+  for(const p of parts){
+    p.x+=p.vx*dt; p.y+=p.vy*dt; p.vy+=160*dt; p.life-=dt;
+    if(p.y < CONFIG.horizonY-2) p.y = CONFIG.horizonY-2; // never escape above the road into the sky
+  }
+  for(let i=parts.length-1;i>=0;i--) if(parts[i].life<=0) parts.splice(i,1);
+  for(const f of floats){
+    f.y+=f.vy*dt; f.vy*=(1-1.6*dt); f.life-=dt;
+    if(f.y < CONFIG.horizonY-2) f.y = CONFIG.horizonY-2;
+  }
+  for(let i=floats.length-1;i>=0;i--) if(floats[i].life<=0) floats.splice(i,1);
+  if(shake>0) shake=Math.max(0, shake-dt*30);
+  if(damageFlash>0) damageFlash=Math.max(0, damageFlash-dt*1.8);
+}
+
+/* ------------------------------- rendering ------------------------------- */
+function draw(){
+  ctx.save();
+  ctx.scale(scaleX, scaleY);
+  ctx.clearRect(0,0,CONFIG.W,CONFIG.H);
+
+  let sx=0, sy=0;
+  if(shake>0){ sx=rand(-shake,shake); sy=rand(-shake,shake); ctx.translate(sx,sy); }
+
+  drawSky();
+  drawBridge();
+  // draw far -> near so nearer things overlap
+  drawGates();
+  if(bosses.length) for(const b of bosses) if(!b.dead) drawBoss(b);
+  drawZombies();
+  drawBullets();
+  drawFlameCone();
+  drawSquad();
+  drawParticles();
+  drawFloats();
+  drawPaperOverlay();
+  ctx.restore();
+
+  if(damageFlash>0) drawDamageFlash();
+  drawHUD();   // HUD drawn unscaled-shake, but scaled to design space
+}
+
+function drawFlameCone(){
+  // Wide translucent cone of fire so the flamethrower reads as area
+  // coverage, not just individual flame blobs — pulses with the firing rate.
+  const w = CONFIG.weapons[weaponTier];
+  if(w.projectile!=='flame' || squad.count<=0 || phase!=='run') return;
+  const nearZ=0.045, farZ=0.32;
+  const nearL=project(nearZ, squad.lane-0.05), nearR=project(nearZ, squad.lane+0.05);
+  const farL =project(farZ,  squad.lane-w.spread), farR=project(farZ, squad.lane+w.spread);
+  const flick = 0.5 + Math.sin(performance.now()*0.018)*0.15;
+  ctx.save();
+  const grad = ctx.createLinearGradient(nearL.x,nearL.y,farL.x,farL.y);
+  grad.addColorStop(0, `rgba(255,210,130,${0.40*flick})`);
+  grad.addColorStop(0.6, `rgba(255,130,50,${0.22*flick})`);
+  grad.addColorStop(1, 'rgba(255,80,30,0)');
+  ctx.fillStyle=grad;
+  ctx.beginPath();
+  ctx.moveTo(nearL.x,nearL.y); ctx.lineTo(farL.x,farL.y); ctx.lineTo(farR.x,farR.y); ctx.lineTo(nearR.x,nearR.y);
+  ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+
+function drawDamageFlash(){
+  ctx.save(); ctx.scale(scaleX,scaleY);
+  const a = clamp(damageFlash,0,0.4);
+  const g = ctx.createRadialGradient(CONFIG.W/2,CONFIG.H/2,CONFIG.H*0.35,CONFIG.W/2,CONFIG.H/2,CONFIG.H*0.7);
+  g.addColorStop(0,'rgba(255,40,40,0)'); g.addColorStop(1,`rgba(255,30,30,${a})`);
+  ctx.fillStyle=g; ctx.fillRect(0,0,CONFIG.W,CONFIG.H);
+  ctx.restore();
+}
+
+function drawHalftone(x,y,w,h,spacing,radius,color,alpha){
+  ctx.save(); ctx.globalAlpha=alpha; ctx.fillStyle=color;
+  for(let yy=y; yy<y+h; yy+=spacing){
+    const rowShift = (Math.round(yy/spacing)%2)*spacing*0.5;
+    for(let xx=x+rowShift; xx<x+w; xx+=spacing){
+      ctx.beginPath(); ctx.arc(xx,yy,radius,0,TAU); ctx.fill();
+    }
+  }
+  ctx.restore();
+}
+
+function drawSky(){
+  const pal = bgPalette || BACKGROUNDS[0];
+  const g = ctx.createLinearGradient(0,0,0,CONFIG.horizonY+160);
+  g.addColorStop(0,pal.top); g.addColorStop(1,pal.bottom);
+  ctx.fillStyle=g; ctx.fillRect(-40,-40,CONFIG.W+80,CONFIG.horizonY+200);
+  // comic halftone band near the horizon for that printed-poster look
+  drawHalftone(-40,CONFIG.horizonY*0.3,CONFIG.W+80,CONFIG.horizonY+60,9,1.3,'#bfe3ff',0.16);
+  // skyline silhouette — generated once per level and stored (see
+  // generateSkyline), so it no longer jitters/"jumps" frame to frame
+  const buildings = skylineBuildings || [];
+  for(const b of buildings){
+    const by = CONFIG.horizonY-b.h+40;
+    ctx.fillStyle=pal.building; ctx.fillRect(b.x, by, b.w, b.h);
+    ctx.fillStyle=pal.accent; ctx.fillRect(b.x, by, b.w, 3);
+  }
+}
+
+function drawBridge(){
+  const nearL = project(0,-1), nearR = project(0,1);
+  const farL  = project(1,-1), farR  = project(1,1);
+  // deck
+  const g = ctx.createLinearGradient(0,CONFIG.horizonY,0,CONFIG.squadY+120);
+  g.addColorStop(0,'#2c3340'); g.addColorStop(1,'#454e5e');
+  ctx.fillStyle=g;
+  ctx.beginPath();
+  ctx.moveTo(farL.x,farL.y); ctx.lineTo(farR.x,farR.y);
+  ctx.lineTo(nearR.x,CONFIG.H+40); ctx.lineTo(nearL.x,CONFIG.H+40); ctx.closePath(); ctx.fill();
+  // median barrier — visually splits the bridge into a left lane (weapon
+  // gates) and a right lane (zombie horde), like the reference screenshot
+  const farM_L = project(1,-0.045), farM_R = project(1,0.045);
+  const nearM_L = project(0,-0.045), nearM_R = project(0,0.045);
+  const mg = ctx.createLinearGradient(0,CONFIG.horizonY,0,CONFIG.squadY);
+  mg.addColorStop(0,'#3c4250'); mg.addColorStop(1,'#6b7383');
+  ctx.fillStyle=mg;
+  ctx.beginPath();
+  ctx.moveTo(farM_L.x,farM_L.y); ctx.lineTo(farM_R.x,farM_R.y);
+  ctx.lineTo(nearM_R.x,nearM_R.y); ctx.lineTo(nearM_L.x,nearM_L.y);
+  ctx.closePath(); ctx.fill();
+  // hazard stripes along the median top edge
+  ctx.strokeStyle='rgba(255,196,46,.65)';
+  for(let i=0;i<10;i++){
+    const z0=i*0.1+(traveled%0.1); if(z0>1) continue;
+    const a=project(z0,-0.04), b=project(z0,0.04);
+    ctx.lineWidth=3*a.scale; ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
+  }
+  // small light posts along the median
+  for(let i=0;i<6;i++){
+    const z=i*0.18+(traveled%0.18); if(z>1) continue;
+    const p=project(z,0);
+    ctx.fillStyle='#aab3bf'; ctx.fillRect(p.x-1.4*p.scale, p.y-28*p.scale, 2.8*p.scale, 28*p.scale);
+    ctx.beginPath(); ctx.arc(p.x, p.y-30*p.scale, 3.6*p.scale, 0, TAU); ctx.fillStyle='#fff5c2'; ctx.fill();
+  }
+  // lane dashes either side of the median
+  ctx.strokeStyle='rgba(255,255,255,.45)'; ctx.lineCap='round';
+  for(let i=0;i<10;i++){
+    const z0=i*0.1+ (traveled%0.1), z1=z0+0.045;
+    if(z0>1||z1>1) continue;
+    const aL=project(z0,-0.5), bL=project(z1,-0.5);
+    const aR=project(z0,0.5),  bR=project(z1,0.5);
+    ctx.lineWidth=3*aL.scale;
+    ctx.beginPath(); ctx.moveTo(aL.x,aL.y); ctx.lineTo(bL.x,bL.y); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(aR.x,aR.y); ctx.lineTo(bR.x,bR.y); ctx.stroke();
+  }
+  // rails / suspension cables on both sides
+  ctx.strokeStyle='#1d2733'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(farL.x,farL.y); ctx.lineTo(nearL.x,CONFIG.H+40);
+  ctx.moveTo(farR.x,farR.y); ctx.lineTo(nearR.x,CONFIG.H+40); ctx.stroke();
+  // solid walls down both sides — a real barrier, not just a thin line, so
+  // nothing can ever visually read as being "outside" the playfield
+  drawSideWall(-1);
+  drawSideWall(1);
+  // cable posts (kept short, sit just above the wall tops)
+  for(let i=0;i<8;i++){
+    const z=i*0.13 + (traveled%0.13); if(z>1) continue;
+    const l=project(z,-1.0), r=project(z,1.0);
+    ctx.strokeStyle='rgba(180,140,90,.7)'; ctx.lineWidth=3*l.scale;
+    ctx.beginPath(); ctx.moveTo(l.x,l.y-46*l.scale); ctx.lineTo(l.x,l.y-66*l.scale); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(r.x,r.y-46*r.scale); ctx.lineTo(r.x,r.y-66*r.scale); ctx.stroke();
+  }
+}
+
+function drawSideWall(side){
+  // Builds a tapered extruded wall along one edge of the road (side=-1 left,
+  // +1 right): bottom edge follows the road surface, top edge is offset
+  // upward by a height that shrinks with perspective scale.
+  const segs = 12;
+  const bottomPts = [], topPts = [];
+  for(let i=0;i<=segs;i++){
+    const z = i/segs;
+    const p = project(z, side);
+    const yBottom = (z===0) ? CONFIG.H+40 : p.y;
+    bottomPts.push({x:p.x, y:yBottom});
+    const wallH = 44*p.scale;
+    topPts.push({x:p.x, y:p.y - wallH});
+  }
+  ctx.beginPath();
+  ctx.moveTo(bottomPts[0].x, bottomPts[0].y);
+  for(let i=1;i<bottomPts.length;i++) ctx.lineTo(bottomPts[i].x, bottomPts[i].y);
+  for(let i=topPts.length-1;i>=0;i--) ctx.lineTo(topPts[i].x, topPts[i].y);
+  ctx.closePath();
+  const wg = ctx.createLinearGradient(0,CONFIG.horizonY,0,CONFIG.squadY+80);
+  wg.addColorStop(0,'#1c2433'); wg.addColorStop(1,'#39435a');
+  ctx.fillStyle=wg; ctx.fill();
+  sketchyStroke(3.5, '#0a0f1a', 2, 1.4); // sketchy ink outline
+  // top cap highlight strip
+  ctx.beginPath();
+  ctx.moveTo(topPts[0].x, topPts[0].y);
+  for(let i=1;i<topPts.length;i++) ctx.lineTo(topPts[i].x, topPts[i].y);
+  ctx.strokeStyle='rgba(255,255,255,.35)'; ctx.lineWidth=2; ctx.stroke();
+}
+
+function gateColor(kind){
+  if(kind==='add') return ['#8fe0ff','#2b8fd6'];
+  if(kind==='weapon') return ['#bfffd9','#1f9e5a'];
+  return ['#ff9aa0','#c02b34']; // penalty
+}
+function drawGates(){
+  // sort far first
+  const list = gates.filter(g=>!g.broken).sort((a,b)=>b.z-a.z);
+  for(const g of list){
+    const cx = -0.52;
+    const p = project(g.z, cx);
+    const w = CONFIG.roadHalfNear*0.92*p.scale;
+    const h = 150*p.scale;
+    const [c1,c2]=gateColor(g.kind);
+    ctx.save();
+    ctx.globalAlpha = 0.9;
+    const grd=ctx.createLinearGradient(p.x-w/2,0,p.x+w/2,0);
+    grd.addColorStop(0,c2); grd.addColorStop(0.5,c1); grd.addColorStop(1,c2);
+    ctx.fillStyle=grd;
+    roundRect(p.x-w/2, p.y-h, w, h, 6*p.scale); ctx.fill();
+    sketchyStroke(4*p.scale, '#0a0f1a', 3, 1.3); // sketchy ink outline
+    // jagged ice-crack linework (comic style) instead of soft diagonal facets
+    ctx.globalAlpha=0.4; ctx.strokeStyle='#fff'; ctx.lineWidth=Math.max(1,1.6*p.scale);
+    for(let i=1;i<4;i++){
+      const cx0=p.x-w/2+i*w/4;
+      ctx.beginPath(); ctx.moveTo(cx0, p.y-h);
+      ctx.lineTo(cx0-5*p.scale, p.y-h*0.6); ctx.lineTo(cx0+3*p.scale, p.y-h*0.35); ctx.lineTo(cx0-6*p.scale, p.y);
+      ctx.stroke();
+    }
+    ctx.globalAlpha=1;
+    // HP number — big, bold sticker-style digits like the ad's countdown blocks
+    const hpTxt = String(Math.ceil(g.hp));
+    const numSize = Math.max(16, Math.min(66, 72 - hpTxt.length*5)) * p.scale;
+    ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.lineJoin='round';
+    ctx.font=`900 ${numSize}px "Bangers","Arial Black",sans-serif`;
+    ctx.lineWidth=numSize*0.22; ctx.strokeStyle='rgba(0,0,0,.55)';
+    ctx.strokeText(hpTxt, p.x, p.y-h*0.52);
+    ctx.fillStyle='#fff';
+    ctx.fillText(hpTxt, p.x, p.y-h*0.52);
+    // reward: a glowing gun icon for weapon gates (like the ad's etched
+    // rifle) PLUS its name in bold high-contrast text so it's obvious which
+    // weapon is coming, otherwise a small +N / -N pill beneath the big number
+    if(g.kind==='weapon'){
+      // dark backing plate so the icon/text pop against the icy gradient
+      ctx.globalAlpha=0.55; ctx.fillStyle='#06120a';
+      roundRect(p.x-w*0.42, p.y-h*0.36, w*0.84, h*0.36, 6*p.scale); ctx.fill();
+      ctx.globalAlpha=1;
+      drawGunIcon(p.x, p.y-h*0.30, p.scale, '#9dffc4');
+      const nameTxt = CONFIG.weapons[g.targetTier].name;
+      const nameSize = Math.max(9, 14*p.scale);
+      ctx.font=`900 ${nameSize}px "Bangers","Arial Black",sans-serif`;
+      ctx.lineWidth=nameSize*0.28; ctx.strokeStyle='#000';
+      ctx.strokeText(nameTxt, p.x, p.y-h*0.14);
+      ctx.fillStyle='#bfffd9';
+      ctx.fillText(nameTxt, p.x, p.y-h*0.14);
+      // is this a fresh weapon, a level-up, or will it cross a perk milestone?
+      const willLevel = weaponLevels[g.targetTier]>0;
+      const nextLvl = (weaponLevels[g.targetTier]||0) + 1;
+      const willUnlockPerk = CONFIG.weaponPerkLevels.includes(nextLvl);
+      const subTxt = willUnlockPerk ? 'PERK UNLOCK!' : willLevel ? ('LV UP +'+Math.round(CONFIG.weaponLevelDamageBonus*100)+'% DMG') : 'NEW WEAPON';
+      const subSize = Math.max(7, 10*p.scale);
+      ctx.font=`900 ${subSize}px "Bangers","Arial Black",sans-serif`;
+      ctx.lineWidth=subSize*0.3; ctx.strokeStyle='#000';
+      ctx.strokeText(subTxt, p.x, p.y-h*0.04);
+      ctx.fillStyle = willUnlockPerk ? '#ff9adf' : willLevel ? '#ffd24d' : '#bfffd9';
+      ctx.fillText(subTxt, p.x, p.y-h*0.04);
+    } else {
+      let label = g.kind==='add'?('+'+g.amount):('−'+g.amount);
+      const labelSize = Math.max(11,27*p.scale);
+      ctx.font=`900 ${labelSize}px "Bangers","Arial Black",sans-serif`;
+      ctx.lineWidth=labelSize*0.2; ctx.strokeStyle='rgba(0,0,0,.5)';
+      ctx.strokeText(label, p.x, p.y-h*0.15);
+      ctx.fillStyle = g.kind==='penalty'?'#ffd7d9':'#eafaff';
+      ctx.fillText(label, p.x, p.y-h*0.15);
+    }
+    ctx.restore();
+  }
+}
+function drawGunIcon(x,y,scale,color){
+  ctx.save();
+  ctx.translate(x,y); ctx.scale(scale*0.78,scale*0.78);
+  ctx.strokeStyle=color; ctx.lineWidth=3; ctx.lineJoin='round'; ctx.lineCap='round';
+  ctx.shadowColor=color; ctx.shadowBlur=12;
+  ctx.beginPath();
+  ctx.moveTo(-18,7); ctx.lineTo(-7,7); ctx.lineTo(-3,-2); ctx.lineTo(20,-2);
+  ctx.lineTo(20,2); ctx.lineTo(-2,2); ctx.lineTo(-4,11); ctx.lineTo(-11,11); ctx.lineTo(-11,7);
+  ctx.closePath(); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(1,2); ctx.lineTo(-1,15); ctx.lineTo(6,15); ctx.lineTo(7,2); ctx.closePath(); ctx.stroke();
+  ctx.restore();
+}
+
+function drawZombies(){
+  // z>=1 means "still beyond the visible horizon" — drawing those clamps
+  // them all to the same vanishing point and makes them look like they're
+  // floating in the sky above the road edge. Skip until they actually
+  // scroll into view; physics/collision still run normally in update().
+  const list = zombies.filter(z=>!z.dead && z.z<1).sort((a,b)=>b.z-a.z);
+  for(const z of list){
+    const p=project(z.z,z.lane); const s=p.scale;
+    // Belt-and-suspenders: whatever z.lane ended up being (status effects
+    // can nudge it), never let the rendered position cross the actual road
+    // edge at this depth — this is what guarantees nothing ever appears to
+    // run on the black area outside the bridge.
+    const edgeL = project(z.z, 0.06).x, edgeR = project(z.z, 0.92).x;
+    p.x = clamp(p.x, Math.min(edgeL,edgeR), Math.max(edgeL,edgeR));
+    let hopY = 0;
+    ctx.save();
+    if(z.throwTimer>0){
+      // bazooka throw: a little airborne hop + spin while it tumbles
+      const prog = 1 - clamp(z.throwTimer/(z.throwMaxDuration||1),0,1);
+      hopY = -Math.sin(Math.min(1,prog)*Math.PI)*11*s;
+      ctx.translate(p.x,p.y+hopY); ctx.rotate(z.spin);
+    } else {
+      ctx.translate(p.x,p.y);
+    }
+    const sway = z.stunTimer>0 ? 0 : Math.sin(z.wob)*2*s; // stunned = frozen, no idle sway
+    let bodyColor='#3fa84d', armColor='#287032', outline='#0a0f1a';
+    if(z.burnTimer>0){ bodyColor='#ff7a3d'; armColor='#d9551f'; }
+    if(z.slowTimer>0 && z.throwTimer<=0){ bodyColor='#7fa8c9'; armColor='#5c84a8'; }
+    if(z.throwTimer>0){ bodyColor='#ffe27a'; armColor='#e0bb4a'; }
+    if(z.stunTimer>0){ bodyColor='#d8d8d8'; armColor='#a8a8a8'; }
+    if(z.hitFlash>0){ bodyColor='#fff'; armColor='#fff'; }
+    const variant = z.variant||0;
+    ctx.lineJoin='round';
+    // torn, jagged-edged torso instead of a clean rounded block — slightly
+    // different tear pattern per variant for visual variety in a crowd
+    ctx.fillStyle=bodyColor;
+    ctx.beginPath();
+    ctx.moveTo(-7*s+sway,-4*s); ctx.lineTo(-8*s+sway,-14*s); ctx.lineTo(variant===1?-6*s+sway:-5*s+sway,-26*s);
+    ctx.lineTo(0+sway,-24*s); ctx.lineTo(variant===2?6*s+sway:5*s+sway,-26*s); ctx.lineTo(8*s+sway,-14*s);
+    ctx.lineTo(7*s+sway,-4*s); ctx.lineTo(2*s+sway,-2*s); ctx.lineTo(-2*s+sway,-2*s);
+    ctx.closePath(); ctx.fill();
+    sketchyStroke(2.2*s, outline);
+    crossHatch(-8*s+sway,-26*s,7*s,22*s,outline,2.6*s,0.22); // shaded torso side
+    // a couple of torn-fabric strips / exposed-rib lines for grit (variant 1)
+    if(variant===1){
+      ctx.strokeStyle=outline; ctx.lineWidth=Math.max(0.6,1*s); ctx.globalAlpha=0.5;
+      ctx.beginPath(); ctx.moveTo(-3*s+sway,-20*s); ctx.lineTo(-1*s+sway,-8*s);
+      ctx.moveTo(3*s+sway,-19*s); ctx.lineTo(1.5*s+sway,-7*s); ctx.stroke();
+      ctx.globalAlpha=1;
+    }
+    // angular head
+    ctx.fillStyle=bodyColor;
+    ctx.beginPath();
+    ctx.moveTo(-5*s+sway,-30*s); ctx.lineTo(-5.5*s+sway,-35*s); ctx.lineTo(0+sway,-37.5*s);
+    ctx.lineTo(5.5*s+sway,-35*s); ctx.lineTo(5*s+sway,-30*s); ctx.lineTo(0+sway,-28.5*s);
+    ctx.closePath(); ctx.fill();
+    sketchyStroke(2*s, outline);
+    // jagged open jaw with teeth (variant 2 has a wider, hungrier mouth)
+    const jawW = variant===2 ? 4.4 : 3.2;
+    ctx.fillStyle='#1a0e0e';
+    ctx.beginPath(); ctx.moveTo(-jawW*s*0.5+sway,-30.5*s); ctx.lineTo(jawW*s*0.5+sway,-30.5*s);
+    ctx.lineTo(jawW*s*0.35+sway,-28*s); ctx.lineTo(-jawW*s*0.35+sway,-28*s); ctx.closePath(); ctx.fill();
+    ctx.fillStyle='#f2f2e6';
+    for(let tx=-jawW*0.4;tx<=jawW*0.4;tx+=jawW*0.4){ ctx.fillRect(tx*s+sway-0.5*s,-30.3*s,1*s,1.4*s); }
+    // one squinted/missing eye for character
+    ctx.fillStyle='#0a0f1a'; ctx.beginPath(); ctx.arc(-2.4*s+sway,-32.5*s,0.9*s,0,TAU); ctx.fill();
+    if(variant!==0){ ctx.beginPath(); ctx.arc(2.4*s+sway,-32.5*s,0.9*s,0,TAU); ctx.fill(); }
+    // claw arms reaching — pose varies slightly by variant
+    const armSpread = variant===0 ? 13 : 10;
+    ctx.strokeStyle=armColor; ctx.lineWidth=Math.max(1,3*s); ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(-6*s+sway,-20*s); ctx.lineTo(-armSpread*s+sway,-31*s);
+    ctx.moveTo(6*s+sway,-20*s); ctx.lineTo(armSpread*s+sway,variant===1?-24*s:-31*s); ctx.stroke();
+    sketchyStroke(1.1*s, outline, 2, 0.5);
+    // claws
+    ctx.fillStyle=outline;
+    ctx.beginPath(); ctx.arc(-armSpread*s+sway,-31*s,1.1*s,0,TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(armSpread*s+sway, variant===1?-24*s:-31*s, 1.1*s,0,TAU); ctx.fill();
+    // dizzy stars while stunned
+    if(z.stunTimer>0){
+      const t = performance.now()*0.006;
+      ctx.fillStyle='#fff';
+      for(let k=0;k<3;k++){
+        const a = t + k*(TAU/3);
+        ctx.beginPath(); ctx.arc(Math.cos(a)*9*s, -38*s+Math.sin(a)*2*s, 1.6*s, 0, TAU); ctx.fill();
+      }
+    }
+    // hp pip
+    if(z.hp<z.maxhp){ ctx.fillStyle='#0008'; ctx.fillRect(-9*s,-40*s,18*s,3*s);
+      ctx.fillStyle='#7dffa0'; ctx.fillRect(-9*s,-40*s,18*s*clamp(z.hp/z.maxhp,0,1),3*s); }
+    ctx.restore();
+  }
+}
+
+function drawBoss(boss){
+  const p=project(boss.z,boss.lane); const s=p.scale*2.4;
+  ctx.save(); ctx.translate(p.x,p.y); ctx.lineJoin='round';
+  const step=Math.sin(boss.step*3)*4*p.scale;
+  // jagged armored torso instead of a clean rounded block
+  ctx.fillStyle = boss.hitFlash>0?'#fff':'#8a3038';
+  ctx.beginPath();
+  ctx.moveTo(-26*s+step*0.2,-12*s); ctx.lineTo(-30*s+step*0.2,-40*s); ctx.lineTo(-22*s+step*0.2,-66*s);
+  ctx.lineTo(-8*s+step*0.2,-72*s); ctx.lineTo(8*s+step*0.2,-72*s); ctx.lineTo(22*s+step*0.2,-66*s);
+  ctx.lineTo(30*s+step*0.2,-40*s); ctx.lineTo(26*s+step*0.2,-12*s);
+  ctx.closePath(); ctx.fill();
+  sketchyStroke(4*p.scale, '#0a0f1a', 3, 1.6);
+  crossHatch(-30*s+step*0.2,-72*s,28*s,60*s,'#0a0f1a',5*p.scale,0.22);
+  // chest plate accent (flat second tone, no gradient)
+  ctx.fillStyle = boss.hitFlash>0?'#fff':'#6e1f27';
+  roundRect(-14*s+step*0.2,-58*s,28*s,20*s,4*s); ctx.fill();
+  sketchyStroke(2.4*p.scale, '#0a0f1a', 2, 1);
+  // head
+  ctx.fillStyle = boss.hitFlash>0?'#fff':'#a4434b';
+  ctx.beginPath(); ctx.arc(0,-78*s,18*s,0,TAU); ctx.fill();
+  sketchyStroke(3.4*p.scale, '#0a0f1a', 3, 1.4);
+  // brow ridge (angular, menacing)
+  ctx.fillStyle='#5a161c';
+  ctx.beginPath(); ctx.moveTo(-16*s,-86*s); ctx.lineTo(-4*s,-90*s); ctx.lineTo(4*s,-90*s); ctx.lineTo(16*s,-86*s);
+  ctx.lineTo(16*s,-82*s); ctx.lineTo(-16*s,-82*s); ctx.closePath(); ctx.fill();
+  // eyes
+  ctx.fillStyle='#ffdf3d';
+  ctx.beginPath(); ctx.arc(-7*s,-80*s,3.6*s,0,TAU); ctx.fill(); sketchyStroke(1.4*p.scale,'#0a0f1a',2,0.8);
+  ctx.beginPath(); ctx.arc(7*s,-80*s,3.6*s,0,TAU); ctx.fill(); sketchyStroke(1.4*p.scale,'#0a0f1a',2,0.8);
+  // cleaver — bigger, more angular blade
+  ctx.fillStyle='#dde3ea';
+  ctx.beginPath();
+  ctx.moveTo(24*s+step,-68*s); ctx.lineTo(44*s+step,-64*s); ctx.lineTo(42*s+step,-38*s);
+  ctx.lineTo(22*s+step,-34*s); ctx.closePath(); ctx.fill();
+  sketchyStroke(3*p.scale, '#0a0f1a', 2, 1);
+  ctx.fillStyle='#4a3322'; roundRect(20*s+step,-36*s,8*s,16*s,2*s); ctx.fill(); // handle
+  ctx.restore();
+}
+
+function drawBullets(){
+  const now = performance.now()*0.012;
+  for(const b of bullets){
+    if(b.z>=1) continue; // beyond the horizon — not visible yet
+    const p=project(b.z,b.x); const s=p.scale*(b.psize||1);
+    ctx.globalAlpha=0.95;
+    switch(b.projectile){
+      case 'tracer': {
+        if(b.laser){
+          // machine gun — long bright glowing beam, reads as near-continuous fire
+          ctx.shadowColor=b.color; ctx.shadowBlur=7*s;
+          ctx.strokeStyle=b.color; ctx.lineCap='round';
+          ctx.lineWidth=1.4*s; ctx.globalAlpha=0.4;
+          ctx.beginPath(); ctx.moveTo(p.x,p.y+2*s); ctx.lineTo(p.x,p.y-26*s); ctx.stroke();
+          ctx.globalAlpha=1; ctx.lineWidth=2.6*s; ctx.strokeStyle='#ffffff';
+          ctx.beginPath(); ctx.moveTo(p.x,p.y-1*s); ctx.lineTo(p.x,p.y-13*s); ctx.stroke();
+          ctx.shadowBlur=0;
+        } else {
+          // thin fast streak with a bright core and a fading tail
+          ctx.strokeStyle=b.color; ctx.lineCap='round';
+          ctx.lineWidth=1.6*s; ctx.globalAlpha=0.35;
+          ctx.beginPath(); ctx.moveTo(p.x,p.y-1*s); ctx.lineTo(p.x,p.y-15*s); ctx.stroke();
+          ctx.globalAlpha=0.95; ctx.lineWidth=2.4*s;
+          ctx.beginPath(); ctx.moveTo(p.x,p.y-2*s); ctx.lineTo(p.x,p.y-8*s); ctx.stroke();
+        }
+        break;
+      }
+      case 'pellet': {
+        // small round shot — several of these fly per shotgun blast
+        ctx.fillStyle=b.color;
+        ctx.beginPath(); ctx.arc(p.x,p.y-5*s,2.6*s,0,TAU); ctx.fill();
+        ctx.lineWidth=Math.max(0.6,1*s); ctx.strokeStyle='#0a0f1a'; ctx.stroke();
+        break;
+      }
+      case 'rocket': {
+        // big glowing warhead with a smoke/flame trail
+        ctx.fillStyle='rgba(160,160,160,.4)';
+        ctx.beginPath(); ctx.ellipse(p.x,p.y+2*s,2.6*s,7*s,0,0,TAU); ctx.fill();
+        ctx.shadowColor=b.color; ctx.shadowBlur=10*s; ctx.fillStyle=b.color;
+        roundRect(p.x-3.2*s, p.y-15*s, 6.4*s, 15*s, 3*s); ctx.fill();
+        ctx.shadowBlur=0;
+        ctx.lineWidth=Math.max(0.8,1.4*s); ctx.strokeStyle='#0a0f1a'; ctx.stroke();
+        break;
+      }
+      case 'flame': {
+        // flickering blob of fire — wide and irregular, not a clean shape
+        const flick = Math.sin(b.seed + now*1.6) * 1.4*s;
+        const grad = ctx.createRadialGradient(p.x,p.y-6*s,0, p.x,p.y-6*s,8*s);
+        grad.addColorStop(0,'#fff7c2'); grad.addColorStop(0.45,b.color); grad.addColorStop(1,'rgba(255,80,20,0)');
+        ctx.fillStyle=grad;
+        ctx.beginPath(); ctx.ellipse(p.x, p.y-6*s, 5*s+flick, 8.5*s, 0, 0, TAU); ctx.fill();
+        break;
+      }
+      default: { // 'bullet' — simple pistol round
+        ctx.fillStyle=b.color;
+        roundRect(p.x-2*s, p.y-9*s, 4*s, 10*s, 2*s); ctx.fill();
+        ctx.lineWidth=Math.max(0.6,1*s); ctx.strokeStyle='#0a0f1a'; ctx.stroke();
+      }
+    }
+  }
+  ctx.globalAlpha=1;
+}
+
+function drawSquad(){
+  if(squad.count<=0) return;
+  const w = CONFIG.weapons[weaponTier];
+  for(const f of squad.formation){
+    const p = project(0 + f.oz*0.12, squad.lane + f.ox); // tiny depth spread
+    const s = p.scale * (1 - f.oz*0.4);
+    drawSoldier(p.x, p.y, s, w, f.seed);
+  }
+  // squad count tag
+  const top = project(0.18, squad.lane);
+  ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.font='900 30px "Bangers","Arial Black",sans-serif'; ctx.lineWidth=5; ctx.strokeStyle='rgba(0,0,0,.55)';
+  ctx.strokeText(squad.count, top.x, top.y-10); ctx.fillText(squad.count, top.x, top.y-10);
+}
+
+function drawSoldier(x,y,s,weapon,seed){
+  ctx.save(); ctx.translate(x,y); ctx.lineJoin='round';
+  // shadow
+  ctx.fillStyle='rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(0,2.5*s,8.5*s,3*s,0,0,TAU); ctx.fill();
+  // body (blue trooper) — chunkier block with sketchy ink outline
+  ctx.fillStyle='#2f7bee'; roundRect(-7*s,-21*s,14*s,19*s,4*s); ctx.fill();
+  sketchyStroke(1.8*s, '#0a0f1a');
+  crossHatch(-7*s,-21*s,7*s,19*s,'#0a0f1a',3.2*s,0.18); // shaded side, hand-drawn hatch not gradient
+  // flat cel-shade accent stripe (no gradient — solid second tone)
+  ctx.fillStyle='#1c4fb0'; roundRect(-7*s,-9*s,14*s,5*s,1.5*s); ctx.fill();
+  // vest straps
+  ctx.strokeStyle='#173f82'; ctx.lineWidth=Math.max(0.8,1.4*s);
+  ctx.beginPath(); ctx.moveTo(-4*s,-20*s); ctx.lineTo(-3*s,-3*s); ctx.moveTo(4*s,-20*s); ctx.lineTo(3*s,-3*s); ctx.stroke();
+  // pack
+  ctx.fillStyle='#15346e'; roundRect(-8.5*s,-17*s,3.5*s,12*s,1.2*s); ctx.fill();
+  sketchyStroke(1.4*s, '#0a0f1a');
+  // head — bigger, comic-proportioned, sketchy outline
+  ctx.fillStyle='#f0c79a'; ctx.beginPath(); ctx.arc(0,-26*s,5.4*s,0,TAU); ctx.fill();
+  sketchyStroke(1.6*s, '#0a0f1a');
+  // helmet
+  ctx.fillStyle='#173f82'; ctx.beginPath(); ctx.arc(0,-27.5*s,6*s,Math.PI,0); ctx.fill();
+  sketchyStroke(1.6*s, '#0a0f1a');
+  // weapon silhouette — shape varies by what's actually equipped, so the
+  // soldiers visibly carry whatever gun the HUD says they have
+  drawHeldWeapon(s, weapon);
+  if(squad.muzzle>0 && (seed*97%1)<0.5){
+    drawStarBurst(13*s,-15.2*s, rand(3,5)*s, weapon.color);
+  }
+  ctx.restore();
+}
+
+function drawHeldWeapon(s, weapon){
+  ctx.fillStyle='#222';
+  switch(weapon.projectile){
+    case 'pellet': // shotgun — short, wide double-barrel
+      roundRect(2*s,-18*s,9*s,5*s,1*s); ctx.fill(); sketchyStroke(1.2*s,'#0a0f1a',2,0.6);
+      break;
+    case 'tracer': // machine gun / dual smg — longer barrel with a stick magazine
+      roundRect(2*s,-17*s,13*s,3.2*s,1*s); ctx.fill();
+      ctx.fillRect(6*s,-14*s,2.4*s,5*s);
+      sketchyStroke(1.2*s,'#0a0f1a',2,0.6);
+      break;
+    case 'rocket': // bazooka — big tube over the shoulder
+      roundRect(0,-19*s,16*s,6.5*s,2*s); ctx.fill();
+      ctx.beginPath(); ctx.arc(16*s,-15.7*s,3.2*s,0,TAU); ctx.fill();
+      sketchyStroke(1.4*s,'#0a0f1a',2,0.6);
+      break;
+    case 'flame': // flamethrower — tank on the back + nozzle
+      ctx.fillStyle='#7a1f1f'; ctx.beginPath(); ctx.arc(-7*s,-12*s,3.6*s,0,TAU); ctx.fill();
+      sketchyStroke(1.2*s,'#0a0f1a',2,0.6);
+      ctx.fillStyle='#222'; roundRect(2*s,-17*s,12*s,3.6*s,1*s); ctx.fill();
+      sketchyStroke(1.2*s,'#0a0f1a',2,0.6);
+      break;
+    default: // pistol — small simple block
+      roundRect(2*s,-17*s,9*s,3.2*s,1*s); ctx.fill(); sketchyStroke(1.1*s,'#0a0f1a',2,0.6);
+  }
+}
+
+function drawStarBurst(x,y,r,color){
+  ctx.save(); ctx.translate(x,y);
+  ctx.fillStyle=color; ctx.strokeStyle='#0a0f1a'; ctx.lineWidth=Math.max(1,r*0.18);
+  ctx.beginPath();
+  const spikes=6;
+  for(let i=0;i<spikes*2;i++){
+    const ang=(Math.PI*i)/spikes, rad= i%2===0 ? r : r*0.42;
+    const px=Math.cos(ang)*rad, py=Math.sin(ang)*rad;
+    if(i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+  }
+  ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.restore();
+}
+
+function drawParticles(){
+  for(const p of parts){
+    ctx.globalAlpha=clamp(p.life/p.max,0,1); ctx.fillStyle=p.color;
+    ctx.beginPath(); ctx.arc(p.x,p.y,p.size,0,TAU); ctx.fill();
+  }
+  ctx.globalAlpha=1;
+}
+function drawFloats(){
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  for(const f of floats){
+    ctx.globalAlpha=clamp(f.life/0.9,0,1);
+    ctx.font=`900 ${f.size}px "Bangers","Arial Black",sans-serif`;
+    ctx.lineWidth=5; ctx.strokeStyle='rgba(0,0,0,.5)';
+    ctx.strokeText(f.txt,f.x,f.y); ctx.fillStyle=f.color; ctx.fillText(f.txt,f.x,f.y);
+  }
+  ctx.globalAlpha=1;
+}
+
+function drawHeartIcon(cx,cy,s,color){
+  ctx.save(); ctx.translate(cx,cy);
+  ctx.beginPath();
+  ctx.moveTo(0, s*0.32);
+  ctx.bezierCurveTo(-s*0.55,-s*0.35, -s*1.05,s*0.08, 0, s*0.95);
+  ctx.bezierCurveTo(s*1.05,s*0.08, s*0.55,-s*0.35, 0, s*0.32);
+  ctx.closePath();
+  ctx.fillStyle=color; ctx.fill();
+  sketchyStroke(Math.max(1,s*0.2), '#0a0f1a', 2, 0.6);
+  ctx.restore();
+}
+function drawSkullIcon(cx,cy,s,color){
+  ctx.save(); ctx.translate(cx,cy);
+  ctx.fillStyle=color;
+  ctx.beginPath(); ctx.arc(0,-s*0.15,s*0.55,0,TAU); ctx.fill();
+  sketchyStroke(Math.max(1,s*0.16), '#0a0f1a', 2, 0.5);
+  ctx.fillStyle='#1a0e0e';
+  roundRect(-s*0.32,s*0.18,s*0.64,s*0.32,s*0.06); ctx.fill();
+  ctx.fillStyle='#0a0f1a';
+  ctx.beginPath(); ctx.arc(-s*0.22,-s*0.18,s*0.13,0,TAU); ctx.fill();
+  ctx.beginPath(); ctx.arc(s*0.22,-s*0.18,s*0.13,0,TAU); ctx.fill();
+  ctx.restore();
+}
+
+function drawHUD(){
+  ctx.save(); ctx.scale(scaleX,scaleY);
+  const top = hudTopDynamic;
+  // top bar: weapon tier — darker, more opaque background + a color accent
+  // strip matching the weapon, bold sticker-style outline, big bold text
+  const w=CONFIG.weapons[weaponTier];
+  ctx.fillStyle='rgba(4,8,14,.88)'; roundRect(12,top,200,32,8); ctx.fill();
+  ctx.lineWidth=2.5; ctx.strokeStyle='#0a0f1a'; ctx.strokeRect(12,top,200,32);
+  ctx.fillStyle=w.color; roundRect(12,top,5,32,3); ctx.fill(); // color accent strip
+  ctx.fillStyle='#ffffff'; ctx.textAlign='left'; ctx.textBaseline='middle';
+  ctx.font='900 14px "Bangers","Arial Black",Arial,sans-serif';
+  ctx.shadowColor='rgba(0,0,0,.8)'; ctx.shadowBlur=3;
+  ctx.fillText(w.name + (weaponLevels[weaponTier]>1 ? ' Lv'+weaponLevels[weaponTier] : ''), 25, top+16);
+  ctx.shadowBlur=0;
+  // tier pips — outlined for contrast against both bright and dark gates
+  const pipArea = 56;
+  const pipGap = pipArea / CONFIG.weapons.length;
+  for(let i=0;i<CONFIG.weapons.length;i++){
+    ctx.fillStyle = i<=weaponTier?'#ffd24d':'rgba(255,255,255,.15)';
+    roundRect(150+i*pipGap, top+9, pipGap-2, 14, 2); ctx.fill();
+    ctx.strokeStyle='rgba(0,0,0,.6)'; ctx.lineWidth=1; ctx.strokeRect(150+i*pipGap, top+9, pipGap-2, 14);
+  }
+
+  // level badge, to the right of the weapon badge
+  ctx.fillStyle='rgba(4,8,14,.88)'; roundRect(220,top,70,32,8); ctx.fill();
+  ctx.lineWidth=2.5; ctx.strokeStyle='#0a0f1a'; ctx.strokeRect(220,top,70,32);
+  ctx.fillStyle='#ffd24d'; ctx.textAlign='center';
+  ctx.shadowColor='rgba(0,0,0,.8)'; ctx.shadowBlur=3;
+  ctx.fillText('LV '+level, 255, top+16);
+  ctx.shadowBlur=0;
+
+  // squad lives — how many more hits the squad can take before it's wiped.
+  // There's no real cap anymore, so the bar fill uses a soft visual
+  // reference (it just reads as "full and healthy" once you're well-stocked)
+  // rather than a fraction of an artificial maximum.
+  const sx=12, sy=top+36, sw=200, sh=22;
+  const visualRef = 20;
+  const frac = clamp(squad.count/visualRef, 0, 1);
+  const lifeColor = squad.count>=12 ? '#46e08a' : squad.count>=6 ? '#ffd24d' : '#ff4d57';
+  ctx.fillStyle='rgba(4,8,14,.88)'; roundRect(sx,sy,sw,sh,7); ctx.fill();
+  ctx.fillStyle=lifeColor; roundRect(sx+2,sy+2,Math.max(6,(sw-4)*frac),sh-4,5); ctx.fill();
+  ctx.lineWidth=2.5; ctx.strokeStyle='#0a0f1a'; ctx.strokeRect(sx,sy,sw,sh);
+  ctx.fillStyle='#fff'; ctx.textAlign='left'; ctx.textBaseline='middle';
+  ctx.font='900 12px "Bangers","Arial Black",Arial,sans-serif';
+  ctx.shadowColor='rgba(0,0,0,.8)'; ctx.shadowBlur=3;
+  drawHeartIcon(sx+15, sy+sh/2+1, 7, '#ff5663');
+  ctx.fillText('SQUAD  '+squad.count, sx+26, sy+sh/2+1);
+  ctx.shadowBlur=0;
+  // weakened-debuff indicator, right under the squad bar
+  if(debuffTimer>0){
+    ctx.fillStyle='rgba(255,80,90,.85)'; ctx.font='900 11px "Bangers","Arial Black",Arial,sans-serif';
+    ctx.fillText('WEAKENED '+debuffTimer.toFixed(1)+'s', sx, sy+sh+13);
+  }
+
+  // progress to boss phase
+  const bd = bossPhaseActive ? 1 : clamp(traveled / (lastDist()||1), 0, 1);
+  const railTop = top+74, railH = CONFIG.H-railTop-130;
+  ctx.fillStyle='rgba(8,14,26,.55)'; roundRect(CONFIG.W-26,railTop,14,railH,7); ctx.fill();
+  ctx.fillStyle='#46e08a';
+  roundRect(CONFIG.W-25, railTop+4+railH*(1-bd), 12, Math.max(4,railH*bd), 6); ctx.fill();
+  drawSkullIcon(CONFIG.W-19, railTop-8, 11, '#ff5663');
+
+  // boss health bars — up to 3 shown individually, more collapse to a count
+  const alive = bosses.filter(b=>!b.dead);
+  if(alive.length){
+    const bw=CONFIG.W-80, bx=40, barTop=top+72, gap=21;
+    const shown = alive.slice(0,3);
+    shown.forEach((b,i)=>{
+      const by = barTop + i*gap;
+      ctx.fillStyle='rgba(0,0,0,.5)'; roundRect(bx,by,bw,16,8); ctx.fill();
+      ctx.fillStyle='#ff4d57'; roundRect(bx,by,bw*clamp(b.hp/b.maxhp,0,1),16,8); ctx.fill();
+      ctx.lineWidth=2; ctx.strokeStyle='#0a0f1a'; ctx.strokeRect(bx,by,bw,16);
+      ctx.fillStyle='#fff'; ctx.font='900 11px Arial,sans-serif'; ctx.textAlign='center';
+      ctx.fillText(alive.length>1 ? 'BUTCHER '+(i+1) : 'THE BUTCHER', CONFIG.W/2, by+8);
+    });
+    if(alive.length>3){
+      ctx.fillStyle='#ff8a90'; ctx.font='900 11px "Bangers","Arial Black",sans-serif'; ctx.textAlign='center';
+      ctx.fillText('+'+(alive.length-3)+' MORE', CONFIG.W/2, barTop+3*gap+8);
+    }
+  }
+  ctx.restore();
+}
+let _lastDist=null;
+function lastDist(){ if(schedule.length) _lastDist=schedule[schedule.length-1].d; return _lastDist||10; }
+
+/* utility: rounded rect path */
+function roundRect(x,y,w,h,r){
+  r=Math.min(r,Math.abs(w)/2,Math.abs(h)/2);
+  ctx.beginPath();
+  ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath();
+}
+
+/* ---------------------- comic / rough-sketch rendering -------------------- */
+// Redraws the CURRENT path 2-3 times with tiny random jitter and fading
+// alpha, so outlines read as hand-inked rather than CAD-perfect. Cheap
+// (just a few extra stroke() calls on an already-built path) so it's safe
+// to use on every soldier/zombie even with large squads/hordes on screen.
+function sketchyStroke(baseWidth, color, passes, jitter){
+  passes = passes||2; jitter = jitter==null?1:jitter;
+  for(let i=0;i<passes;i++){
+    ctx.save();
+    ctx.translate(rand(-jitter,jitter), rand(-jitter,jitter));
+    ctx.lineWidth = Math.max(0.6, baseWidth*rand(0.82,1.18));
+    ctx.strokeStyle = color;
+    ctx.globalAlpha = i===0 ? 1 : 0.5;
+    ctx.stroke();
+    ctx.restore();
+  }
+  ctx.globalAlpha = 1;
+}
+// Diagonal cross-hatch shading inside a rect — used for the "shadowed side"
+// of chunky comic shapes instead of a soft gradient.
+function crossHatch(x,y,w,h,color,spacing,alpha){
+  ctx.save();
+  ctx.beginPath(); ctx.rect(x,y,w,h); ctx.clip();
+  ctx.strokeStyle=color; ctx.globalAlpha=alpha==null?0.35:alpha; ctx.lineWidth=1;
+  for(let off=-h; off<w+h; off+=spacing){
+    ctx.beginPath(); ctx.moveTo(x+off,y); ctx.lineTo(x+off+h,y+h); ctx.stroke();
+  }
+  ctx.restore();
+}
+// One-time paper-grain texture, tiled as a repeating pattern and drawn as a
+// faint full-screen overlay every frame — gives the whole game a sketched,
+// slightly textured "drawn on paper" feel instead of flat vector cleanliness.
+let paperPattern = null;
+function initPaperTexture(){
+  const t = document.createElement('canvas'); t.width=64; t.height=64;
+  const tc = t.getContext('2d');
+  for(let i=0;i<900;i++){
+    tc.fillStyle = `rgba(${Math.random()<0.5?0:255},${Math.random()<0.5?0:255},${Math.random()<0.5?0:255},${rand(0.02,0.07)})`;
+    tc.fillRect(Math.random()*64, Math.random()*64, 1, 1);
+  }
+  paperPattern = ctx.createPattern(t,'repeat');
+}
+function drawPaperOverlay(){
+  if(!paperPattern) return;
+  ctx.save(); ctx.globalAlpha=0.5; ctx.fillStyle=paperPattern;
+  ctx.fillRect(0,0,CONFIG.W,CONFIG.H);
+  ctx.restore();
+}
+
+/* ------------------------------- game flow ------------------------------- */
+const startScreen=document.getElementById('start');
+const endScreen=document.getElementById('end');
+const endTitle=document.getElementById('endTitle');
+const endMsg=document.getElementById('endMsg');
+const endStat=document.getElementById('endStat');
+const pauseOverlay=document.getElementById('pauseScreen');
+
+function startGame(){ initAudio(); SFX.button(); reset(); started=true; phase='run'; startScreen.classList.add('hidden'); endScreen.classList.add('hidden'); document.getElementById('upgradeScreen').classList.add('hidden'); document.getElementById('perksScreen').classList.add('hidden'); pauseOverlay.classList.add('hidden'); paused=false; }
+function win(){ if(phase!=='run')return; phase='win'; SFX.win(); showEnd(true); }
+function lose(){ if(phase!=='run')return; phase='lose'; SFX.lose(); showEnd(false); }
+function showEnd(won){
+  endScreen.classList.remove('hidden');
+  endScreen.classList.toggle('win',won); endScreen.classList.toggle('lose',!won);
+  endTitle.textContent = won?'BRIDGE CLEARED':'OVERRUN';
+  endMsg.textContent = won? 'The Butcher falls. Your squad holds the bridge.' : 'The horde broke through. Every upgrade resets — regroup and run it back.';
+  endStat.textContent = 'Reached Level '+level+'  ·  Final squad: '+Math.max(0,squad.count)+'  ·  Weapon: '+CONFIG.weapons[weaponTier].name;
+}
+
+document.getElementById('startBtn').addEventListener('click', startGame);
+document.getElementById('retryBtn').addEventListener('click', startGame);
+document.getElementById('muteBtn').addEventListener('click', (e)=>{ e.stopPropagation(); initAudio(); toggleMute(); });
+document.getElementById('pauseBtn').addEventListener('click', (e)=>{ e.stopPropagation(); SFX.button(); togglePause(); });
+document.getElementById('perksBtn').addEventListener('click', ()=>{
+  SFX.button(); renderPerksScreen();
+  startScreen.classList.add('hidden');
+  document.getElementById('perksScreen').classList.remove('hidden');
+});
+document.getElementById('perksBackBtn').addEventListener('click', ()=>{
+  SFX.button();
+  document.getElementById('perksScreen').classList.add('hidden');
+  startScreen.classList.remove('hidden');
+});
+document.getElementById('resumeBtn').addEventListener('click', ()=>{ SFX.button(); togglePause(); });
+document.getElementById('restartBtn').addEventListener('click', ()=>{ SFX.button(); paused=false; pauseOverlay.classList.add('hidden'); startGame(); });
+
+/* ------------------------------- main loop ------------------------------- */
+let last=performance.now(), acc=0; const STEP=1/120;
+function loop(now){
+  let dt=(now-last)/1000; last=now; if(dt>0.1) dt=0.1;
+  if(started && phase==='run' && !paused){ acc+=dt; while(acc>=STEP){ update(STEP); acc-=STEP; } }
+  else { updateFx(dt); }
+  draw();
+  requestAnimationFrame(loop);
+}
+
+/* boot */
+if(document.fonts && document.fonts.load){
+  document.fonts.load('900 16px "Bangers"').catch(()=>{});
+  document.fonts.load('400 16px "Permanent Marker"').catch(()=>{});
+}
+resize(); initPaperTexture(); reset(); requestAnimationFrame(loop);
+setTimeout(resize, 150); // re-measure once layout/safe-area has fully settled
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
+
+</script>
+</body>
+</html>
